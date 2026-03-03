@@ -1,0 +1,156 @@
+{
+  "appPolicies" : {
+    "eula" : "",
+    "policies" : [
+      {
+        "locale" : "en_US",
+        "policyText" : "",
+        "policyURL" : ""
+      }
+    ]
+  },
+  "identifier" : "75A3E32B",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+    {
+      "displayPrice" : "0.99",
+      "familyShareable" : false,
+      "internalID" : "6759630001",
+      "localizations" : [
+        {
+          "description" : "Fill in 1 missed day and keep your streak",
+          "displayName" : "1 Streak Saver",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "io.zerosettle.JustOne.streakSaver1",
+      "referenceName" : "Streak Saver (1)",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "3.99",
+      "familyShareable" : false,
+      "internalID" : "6759630002",
+      "localizations" : [
+        {
+          "description" : "Fill in 5 missed days and keep your streak",
+          "displayName" : "5 Streak Savers",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "io.zerosettle.JustOne.streakSavers5",
+      "referenceName" : "Streak Savers (5)",
+      "type" : "Consumable"
+    }
+  ],
+  "settings" : {
+    "_applicationInternalID" : "6758965008",
+    "_askToBuyEnabled" : false,
+    "_billingGracePeriodEnabled" : false,
+    "_billingIssuesEnabled" : false,
+    "_developerTeamID" : "YUM5K9J52M",
+    "_disableDialogs" : false,
+    "_failTransactionsEnabled" : false,
+    "_lastSynchronizedDate" : 793668938.51302803,
+    "_locale" : "en_US",
+    "_renewalBillingIssuesEnabled" : false,
+    "_storefront" : "USA",
+    "_storeKitErrors" : [
+
+    ],
+    "_timeRate" : 0
+  },
+  "subscriptionGroups" : [
+    {
+      "id" : "21926387",
+      "localizations" : [
+
+      ],
+      "name" : "Premium",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "6.99",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "6758966845",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "Full premium on a monthly basis",
+              "displayName" : "Just One Premium (Monthly)",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "io.zerosettle.justone.premiumMonthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "Just One Premium (Monthly)",
+          "subscriptionGroupID" : "21926387",
+          "type" : "RecurringSubscription",
+          "winbackOffers" : [
+
+          ]
+        },
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "1.99",
+          "familyShareable" : false,
+          "groupNumber" : 2,
+          "internalID" : "6759628915",
+          "introductoryOffer" : null,
+          "localizations" : [
+
+          ],
+          "productID" : "io.zerosettle.JustOne.premiumWeekly",
+          "recurringSubscriptionPeriod" : "P1W",
+          "referenceName" : "Just One Premium (Weekly)",
+          "subscriptionGroupID" : "21926387",
+          "type" : "RecurringSubscription",
+          "winbackOffers" : [
+
+          ]
+        },
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "39.99",
+          "familyShareable" : false,
+          "groupNumber" : 3,
+          "internalID" : "6759628830",
+          "introductoryOffer" : null,
+          "localizations" : [
+
+          ],
+          "productID" : "io.zerosettle.JustOne.premiumYearly",
+          "recurringSubscriptionPeriod" : "P1Y",
+          "referenceName" : "Just One Premium (Yearly)",
+          "subscriptionGroupID" : "21926387",
+          "type" : "RecurringSubscription",
+          "winbackOffers" : [
+
+          ]
+        }
+      ]
+    }
+  ],
+  "version" : {
+    "major" : 4,
+    "minor" : 0
+  }
+}

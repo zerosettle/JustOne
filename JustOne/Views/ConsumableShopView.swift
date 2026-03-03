@@ -1,0 +1,572 @@
+//
+//  ConsumableShopView.swift
+//  JustOne
+//
+//  Shop sheet for purchasing Pro subscriptions and
+//  "Streak Saver" consumable tokens via ZeroSettle.
+//
+
+import SwiftUI
+import ZeroSettleKit
+
+struct ConsumableShopView: View {
+    @Environment(ZeroSettleManager.self) var iapManager
+    @Environment(AuthViewModel.self) var authVM
+    @Environment(\.dismiss) var dismiss
+
+    var onWebCheckout: ((ZSProduct) -> Void)?
+
+    @State private var errorMessage: String?
+    @State private var selection: ShopSelection? = .consumable(.streakSaver1)
+
+    // Footer collapse/expand (Safari-style)
+    @State private var isFooterExpanded = true
+    @State private var scrollAccumulator: CGFloat = 0
+
+    var body: some View {
+        NavigationStack {
+            ZStack(alignment: .bottom) {
+                LinearGradient.justBackground.ignoresSafeArea()
+
+                ScrollView {
+                    VStack(spacing: 32) {
+                        streakSaverSection
+
+                        if !iapManager.isAtHighestTier {
+                            subscriptionSection
+                        }
+
+                        // Spacing for footer
+                        Color.clear.frame(height: 120)
+                    }
+                    .padding(.top, 20)
+                }
+                .onScrollGeometryChange(for: ScrollMetrics.self) { geo in
+                    ScrollMetrics(
+                        offset: geo.contentOffset.y,
+                        maxOffset: geo.contentSize.height - geo.containerSize.height
+                    )
+                } action: { old, new in
+                    handleScroll(from: old, to: new)
+                }
+
+                // Fade haze behind footer
+                VStack(spacing: 0) {
+                    Spacer()
+                    LinearGradient(
+                        colors: [.clear, Color(.systemBackground).opacity(0.6)],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                    .frame(height: 40)
+                    .allowsHitTesting(false)
+                }
+                .ignoresSafeArea(edges: .bottom)
+
+                // Morphing purchase footer
+                purchaseFooter
+                    .animation(.spring(response: 0.4, dampingFraction: 0.82), value: isFooterExpanded)
+            }
+            .ignoresSafeArea(edges: .bottom)
+            .navigationTitle("Shop")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
+                }
+            }
+            .task {
+                if let userId = authVM.appleUserID {
+                    for tier in SubscriptionTier.allCases {
+                        await CheckoutSheet.warmUp(productId: tier.productId, userId: userId)
+                    }
+                    for product in ConsumableProduct.allCases {
+                        await CheckoutSheet.warmUp(productId: product.productId, userId: userId)
+                    }
+                }
+            }
+            .alert("Purchase Error", isPresented: Binding(
+                get: { errorMessage != nil },
+                set: { if !$0 { errorMessage = nil } }
+            )) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(errorMessage ?? "")
+            }
+        }
+    }
+
+    // MARK: - Subscription Section
+
+    private var subscriptionSection: some View {
+        VStack(spacing: 12) {
+            VStack(spacing: 12) {
+                Image(systemName: "crown.fill")
+                    .font(.system(size: 48))
+                    .foregroundStyle(LinearGradient.premiumGradient)
+
+                Text("Pro Subscription")
+                    .font(.title2.weight(.bold))
+
+                Text("Unlock unlimited habits, advanced analytics,\ncustom themes, and cloud sync (coming soon).")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+            .padding(.horizontal)
+
+            VStack(spacing: 12) {
+                ForEach(SubscriptionTier.paywallTiers) { tier in
+                    subscriptionRow(tier)
+                }
+            }
+            .padding(.horizontal, 20)
+        }
+    }
+
+    // MARK: - Streak Saver Section
+
+    private var streakSaverSection: some View {
+        VStack(spacing: 12) {
+            VStack(spacing: 12) {
+                Image(systemName: "bandage.fill")
+                    .font(.system(size: 48))
+                    .foregroundColor(.justWarning)
+
+                Text("Streak Savers")
+                    .font(.title2.weight(.bold))
+
+                Text("Missed a day? No problem.\nUse a streak saver to fill in a missed day\nand keep your progress intact.")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+            .padding(.horizontal)
+
+            // Balance
+            HStack {
+                Image(systemName: "sparkles")
+                    .foregroundColor(.justWarning)
+                Text("Your Balance:")
+                    .foregroundColor(.secondary)
+                Text("\(iapManager.streakSaverTokens) tokens")
+                    .fontWeight(.bold)
+            }
+
+            // Product rows
+            VStack(spacing: 12) {
+                ForEach(ConsumableProduct.allCases) { product in
+                    consumableRow(product)
+                }
+            }
+            .padding(.horizontal, 20)
+        }
+    }
+
+    // MARK: - Subscription Row
+
+    @ViewBuilder
+    private func subscriptionRow(_ tier: SubscriptionTier) -> some View {
+        let isSelected = selection == .subscription(tier)
+
+        Button {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                selection = .subscription(tier)
+                isFooterExpanded = true
+            }
+        } label: {
+            HStack(spacing: 16) {
+                Image(systemName: "crown.fill")
+                    .font(.title2)
+                    .foregroundStyle(LinearGradient.premiumGradient)
+                    .frame(width: 48, height: 48)
+                    .background(
+                        Color.justPrimary.opacity(0.12),
+                        in: RoundedRectangle(cornerRadius: 14)
+                    )
+
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 6) {
+                        Text(tier.displayName)
+                            .font(.headline)
+
+                        if tier.bestValue {
+                            Text("BEST VALUE")
+                                .font(.system(size: 8, weight: .heavy))
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(Color.justSuccess, in: Capsule())
+                        }
+                    }
+
+                    Text(tier.pricePerMonth)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+
+                Spacer()
+
+                priceColumn(productId: tier.productId, fallbackPrice: tier.price)
+
+                if isSelected {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.title2)
+                        .foregroundColor(.justPrimary)
+                }
+            }
+            .padding(16)
+            .background(
+                RoundedRectangle(cornerRadius: 20)
+                    .fill(isSelected ? Color.justPrimary.opacity(0.1) : Color.clear)
+            )
+            .glassCard()
+            .overlay(
+                RoundedRectangle(cornerRadius: 20)
+                    .stroke(isSelected ? Color.justPrimary : Color.clear, lineWidth: 2)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    // MARK: - Price Column
+
+    private func priceColumn(productId: String, fallbackPrice: String) -> some View {
+        let zsProduct = ZeroSettle.shared.product(for: productId)
+
+        return VStack(alignment: .trailing, spacing: 3) {
+            Text(zsProduct?.storeKitPrice?.formatted ?? fallbackPrice)
+                .font(.subheadline.weight(.semibold))
+
+            if let webPrice = zsProduct?.webPrice?.formatted {
+                HStack(spacing: 4) {
+                    Text(webPrice)
+                        .font(.caption.weight(.medium))
+
+                    if let savings = zsProduct?.savingsPercent, savings > 0 {
+                        Text("-\(savings)%")
+                            .font(.caption2.weight(.bold))
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 4)
+                            .padding(.vertical, 1)
+                            .background(Color.justSuccess, in: Capsule())
+                    }
+                }
+                .foregroundColor(.justSuccess)
+            }
+        }
+    }
+
+    // MARK: - Consumable Row
+
+    @ViewBuilder
+    private func consumableRow(_ product: ConsumableProduct) -> some View {
+        let isSelected = selection == .consumable(product)
+
+        Button {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                selection = .consumable(product)
+                isFooterExpanded = true
+            }
+        } label: {
+            HStack(spacing: 16) {
+                Image(systemName: "bandage.fill")
+                    .font(.title2)
+                    .foregroundColor(.justWarning)
+                    .frame(width: 48, height: 48)
+                    .background(
+                        Color.justWarning.opacity(0.12),
+                        in: RoundedRectangle(cornerRadius: 14)
+                    )
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(product.displayName)
+                        .font(.headline)
+                    Text(product.description)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+
+                Spacer()
+
+                priceColumn(productId: product.productId, fallbackPrice: product.price)
+
+                if isSelected {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.title2)
+                        .foregroundColor(.justPrimary)
+                }
+            }
+            .padding(16)
+            .background(
+                RoundedRectangle(cornerRadius: 20)
+                    .fill(isSelected ? Color.justPrimary.opacity(0.1) : Color.clear)
+            )
+            .glassCard()
+            .overlay(
+                RoundedRectangle(cornerRadius: 20)
+                    .stroke(isSelected ? Color.justPrimary : Color.clear, lineWidth: 2)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    // MARK: - Purchase Footer (Morphing)
+
+    @ViewBuilder
+    private var purchaseFooter: some View {
+        if let selection {
+            let zsProduct = ZeroSettle.shared.product(for: selection.productId)
+
+            VStack(spacing: isFooterExpanded ? 10 : 0) {
+                // Name row — always visible, style animates
+                HStack(spacing: 8) {
+                    Image(systemName: selection.iconName)
+                        .font(.system(size: 13))
+                        .foregroundColor(selection.accentColor)
+                        .frame(width: isFooterExpanded ? 0 : nil)
+                        .opacity(isFooterExpanded ? 0 : 1)
+                        .clipped()
+
+                    Text(selection.displayName)
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                        .foregroundStyle(isFooterExpanded ? .secondary : .primary)
+                        .lineLimit(1)
+                }
+
+                // Buttons — morph height, width, and opacity
+                footerButtons(selection: selection, zsProduct: zsProduct)
+                    .frame(height: isFooterExpanded ? nil : 0, alignment: .top)
+                    .frame(maxWidth: isFooterExpanded ? .infinity : 0)
+                    .clipped()
+                    .opacity(isFooterExpanded ? 1 : 0)
+                    .allowsHitTesting(isFooterExpanded)
+            }
+            .padding(.horizontal, isFooterExpanded ? 16 : 12)
+            .padding(.top, isFooterExpanded ? 14 : 9)
+            .padding(.bottom, isFooterExpanded ? 24 : 9)
+            .frame(maxWidth: isFooterExpanded ? .infinity : nil)
+            .background {
+                RoundedRectangle(cornerRadius: isFooterExpanded ? 28 : 22, style: .continuous)
+                    .fill(.regularMaterial)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: isFooterExpanded ? 28 : 22, style: .continuous)
+                            .fill(Color.justPrimary.opacity(0.15))
+                    }
+            }
+            .shadow(color: Color.justPrimary.opacity(0.2), radius: 20, y: 0)
+            .shadow(color: .black.opacity(0.08), radius: 8, y: 2)
+            .padding(.horizontal, isFooterExpanded ? 12 : 0)
+            .padding(.bottom, 16)
+            // Tap-to-expand overlay (only active when collapsed)
+            .overlay {
+                Color.clear
+                    .contentShape(.rect)
+                    .onTapGesture {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
+                            isFooterExpanded = true
+                        }
+                    }
+                    .allowsHitTesting(!isFooterExpanded)
+            }
+        }
+    }
+
+    private func footerButtons(selection: ShopSelection, zsProduct: ZSProduct?) -> some View {
+        HStack(spacing: 10) {
+            // App Store button
+            Button {
+                Task {
+                    do {
+                        switch selection {
+                        case .consumable(let product):
+                            _ = try await iapManager.purchaseConsumable(product, userId: authVM.appleUserID)
+                        case .subscription(let tier):
+                            _ = try await iapManager.purchaseSubscription(tier, userId: authVM.appleUserID)
+                        }
+                    } catch {
+                        errorMessage = error.localizedDescription
+                    }
+                }
+            } label: {
+                VStack(spacing: 4) {
+                    HStack(spacing: 6) {
+                        if iapManager.isPurchasing {
+                            ProgressView()
+                                .tint(.white)
+                        } else {
+                            Image(systemName: "applelogo")
+                                .font(.subheadline)
+                        }
+                        Text("App Store")
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                    }
+
+                    Text(zsProduct?.storeKitPrice?.formatted ?? selection.fallbackPrice)
+                        .font(.caption)
+                        .fontWeight(.medium)
+                        .opacity(0.85)
+                }
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .frame(height: 52)
+                .background(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(Color(.systemGray3))
+                )
+                .opacity(iapManager.isPurchasing ? 0.5 : 1.0)
+            }
+            .disabled(iapManager.isPurchasing)
+
+            // Pay Direct button (only when web price exists)
+            if let webPrice = zsProduct?.webPrice?.formatted {
+                Button {
+                    if let zsProduct { onWebCheckout?(zsProduct) }
+                } label: {
+                    VStack(spacing: 4) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "creditcard.fill")
+                                .font(.subheadline)
+                            Text("Pay Direct")
+                                .font(.subheadline)
+                                .fontWeight(.semibold)
+                        }
+
+                        HStack(spacing: 6) {
+                            Text(webPrice)
+                                .font(.caption)
+                                .fontWeight(.medium)
+
+                            if let savings = zsProduct?.savingsPercent, savings > 0 {
+                                Text("Save \(savings)%")
+                                    .font(.caption2)
+                                    .fontWeight(.bold)
+                                    .padding(.horizontal, 5)
+                                    .padding(.vertical, 1)
+                                    .background(
+                                        Capsule()
+                                            .fill(.white.opacity(0.25))
+                                    )
+                            }
+                        }
+                        .opacity(0.9)
+                    }
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 52)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .fill(
+                                LinearGradient(
+                                    colors: [
+                                        Color(red: 0.15, green: 0.68, blue: 0.38),
+                                        Color(red: 0.10, green: 0.55, blue: 0.45)
+                                    ],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                    )
+                    .opacity(iapManager.isPurchasing ? 0.5 : 1.0)
+                }
+                .disabled(iapManager.isPurchasing)
+            }
+        }
+    }
+
+    // MARK: - Scroll Tracking
+
+    private func handleScroll(from old: ScrollMetrics, to new: ScrollMetrics) {
+        // Ignore top bounce region
+        guard new.offset > 10 && old.offset > 10 else {
+            scrollAccumulator = 0
+            return
+        }
+
+        // Ignore bottom bounce region
+        let maxOffset = max(new.maxOffset, 0)
+        guard new.offset < maxOffset - 10 && old.offset < maxOffset - 10 else {
+            scrollAccumulator = 0
+            return
+        }
+
+        let delta = new.offset - old.offset
+
+        // Reset accumulator when scroll direction reverses
+        if (delta > 0 && scrollAccumulator < 0) || (delta < 0 && scrollAccumulator > 0) {
+            scrollAccumulator = 0
+        }
+
+        scrollAccumulator += delta
+
+        let threshold: CGFloat = 30
+
+        if scrollAccumulator > threshold && isFooterExpanded && selection != nil {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
+                isFooterExpanded = false
+            }
+            scrollAccumulator = 0
+        } else if scrollAccumulator < -threshold && !isFooterExpanded {
+            // Don't expand if still near the bottom — prevents bounce-back re-expansion
+            guard new.offset < maxOffset - 100 else {
+                scrollAccumulator = 0
+                return
+            }
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
+                isFooterExpanded = true
+            }
+            scrollAccumulator = 0
+        }
+    }
+}
+
+// MARK: - Shop Selection
+
+private enum ShopSelection: Equatable {
+    case consumable(ConsumableProduct)
+    case subscription(SubscriptionTier)
+
+    var productId: String {
+        switch self {
+        case .consumable(let p): p.productId
+        case .subscription(let t): t.productId
+        }
+    }
+
+    var displayName: String {
+        switch self {
+        case .consumable(let p): p.displayName
+        case .subscription(let t): t.displayName
+        }
+    }
+
+    var fallbackPrice: String {
+        switch self {
+        case .consumable(let p): p.price
+        case .subscription(let t): t.price
+        }
+    }
+
+    var iconName: String {
+        switch self {
+        case .consumable: "bandage.fill"
+        case .subscription: "crown.fill"
+        }
+    }
+
+    var accentColor: Color {
+        switch self {
+        case .consumable: .justWarning
+        case .subscription: .justPrimary
+        }
+    }
+}
+
+// MARK: - Scroll Metrics
+
+private struct ScrollMetrics: Equatable {
+    let offset: CGFloat
+    let maxOffset: CGFloat
+}

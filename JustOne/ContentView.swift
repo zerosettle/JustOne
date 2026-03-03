@@ -2,23 +2,30 @@
 //  ContentView.swift
 //  JustOne
 //
-//  Created by Ryan Elliott on 2/24/26.
+//  Root router: shows LoginView or HomeDashboardView based on auth state.
 //
 
 import SwiftUI
 
 struct ContentView: View {
-    var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
-        }
-        .padding()
-    }
-}
+    @Environment(AuthViewModel.self) var authVM
 
-#Preview {
-    ContentView()
+    var body: some View {
+        Group {
+            if !authVM.hasRestoredSession {
+                // Hold on a blank/branded screen until session restore completes
+                ZStack {
+                    LinearGradient.justBackground.ignoresSafeArea()
+                    ProgressView()
+                        .tint(.justPrimary)
+                }
+            } else if authVM.isAuthenticated {
+                HomeDashboardView()
+            } else {
+                LoginView()
+            }
+        }
+        .animation(.easeInOut(duration: 0.3), value: authVM.isAuthenticated)
+        .animation(.easeInOut(duration: 0.3), value: authVM.hasRestoredSession)
+    }
 }

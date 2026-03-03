@@ -6,20 +6,125 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		60F6B6CE2F515AD300CEBF20 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 60F6B6CD2F515AD300CEBF20 /* WidgetKit.framework */; };
+		60F6B6D02F515AD300CEBF20 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 60F6B6CF2F515AD300CEBF20 /* SwiftUI.framework */; };
+		60F6B6DF2F515AD400CEBF20 /* JustOneWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 60F6B6CB2F515AD300CEBF20 /* JustOneWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		60F6B76B2F5244CC00CEBF20 /* ZeroSettleKit in Frameworks */ = {isa = PBXBuildFile; productRef = 60F6B76A2F5244CC00CEBF20 /* ZeroSettleKit */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		60F6B6DD2F515AD400CEBF20 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 60F6B55A2F4E363700CEBF20 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 60F6B6CA2F515AD300CEBF20;
+			remoteInfo = JustOneWidgetExtension;
+		};
+		60F6B70B2F4E9A0000CEBF20 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 60F6B55A2F4E363700CEBF20 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 60F6B5612F4E363700CEBF20;
+			remoteInfo = JustOne;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		60F6B6142F4E83B200CEBF20 /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		60F6B6E42F515AD400CEBF20 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				60F6B6DF2F515AD400CEBF20 /* JustOneWidgetExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
 		60F6B5622F4E363700CEBF20 /* JustOne.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = JustOne.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		60F6B6CB2F515AD300CEBF20 /* JustOneWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = JustOneWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		60F6B6CD2F515AD300CEBF20 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
+		60F6B6CF2F515AD300CEBF20 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
+		60F6B7022F4E9A0000CEBF20 /* JustOneTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = JustOneTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		60F6B6E02F515AD400CEBF20 /* Exceptions for "JustOneWidget" folder in "JustOneWidgetExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 60F6B6CA2F515AD300CEBF20 /* JustOneWidgetExtension */;
+		};
+		60F6B6F42F515AFC00CEBF20 /* Exceptions for "JustOne" folder in "JustOneWidgetExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Helpers/SharedModelContainer.swift,
+				Models/Habit.swift,
+				Models/JourneyConfig.swift,
+				Theme/AppTheme.swift,
+			);
+			target = 60F6B6CA2F515AD300CEBF20 /* JustOneWidgetExtension */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		60F6B5642F4E363700CEBF20 /* JustOne */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				60F6B6F42F515AFC00CEBF20 /* Exceptions for "JustOne" folder in "JustOneWidgetExtension" target */,
+			);
 			path = JustOne;
+			sourceTree = "<group>";
+		};
+		60F6B6D12F515AD300CEBF20 /* JustOneWidget */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				60F6B6E02F515AD400CEBF20 /* Exceptions for "JustOneWidget" folder in "JustOneWidgetExtension" target */,
+			);
+			path = JustOneWidget;
+			sourceTree = "<group>";
+		};
+		60F6B7092F4E9A0000CEBF20 /* JustOneTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = JustOneTests;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		60F6B55F2F4E363700CEBF20 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				60F6B76B2F5244CC00CEBF20 /* ZeroSettleKit in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		60F6B6C82F515AD300CEBF20 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				60F6B6D02F515AD300CEBF20 /* SwiftUI.framework in Frameworks */,
+				60F6B6CE2F515AD300CEBF20 /* WidgetKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		60F6B7052F4E9A0000CEBF20 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -33,6 +138,9 @@
 			isa = PBXGroup;
 			children = (
 				60F6B5642F4E363700CEBF20 /* JustOne */,
+				60F6B7092F4E9A0000CEBF20 /* JustOneTests */,
+				60F6B6D12F515AD300CEBF20 /* JustOneWidget */,
+				60F6B6CC2F515AD300CEBF20 /* Frameworks */,
 				60F6B5632F4E363700CEBF20 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -41,8 +149,19 @@
 			isa = PBXGroup;
 			children = (
 				60F6B5622F4E363700CEBF20 /* JustOne.app */,
+				60F6B7022F4E9A0000CEBF20 /* JustOneTests.xctest */,
+				60F6B6CB2F515AD300CEBF20 /* JustOneWidgetExtension.appex */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		60F6B6CC2F515AD300CEBF20 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				60F6B6CD2F515AD300CEBF20 /* WidgetKit.framework */,
+				60F6B6CF2F515AD300CEBF20 /* SwiftUI.framework */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -55,20 +174,67 @@
 				60F6B55E2F4E363700CEBF20 /* Sources */,
 				60F6B55F2F4E363700CEBF20 /* Frameworks */,
 				60F6B5602F4E363700CEBF20 /* Resources */,
+				60F6B6142F4E83B200CEBF20 /* Embed Frameworks */,
+				60F6B6E42F515AD400CEBF20 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				60F6B6DE2F515AD400CEBF20 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				60F6B5642F4E363700CEBF20 /* JustOne */,
 			);
 			name = JustOne;
 			packageProductDependencies = (
+				60F6B76A2F5244CC00CEBF20 /* ZeroSettleKit */,
 			);
 			productName = JustOne;
 			productReference = 60F6B5622F4E363700CEBF20 /* JustOne.app */;
 			productType = "com.apple.product-type.application";
+		};
+		60F6B6CA2F515AD300CEBF20 /* JustOneWidgetExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 60F6B6E12F515AD400CEBF20 /* Build configuration list for PBXNativeTarget "JustOneWidgetExtension" */;
+			buildPhases = (
+				60F6B6C72F515AD300CEBF20 /* Sources */,
+				60F6B6C82F515AD300CEBF20 /* Frameworks */,
+				60F6B6C92F515AD300CEBF20 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				60F6B6D12F515AD300CEBF20 /* JustOneWidget */,
+			);
+			name = JustOneWidgetExtension;
+			packageProductDependencies = (
+			);
+			productName = JustOneWidgetExtension;
+			productReference = 60F6B6CB2F515AD300CEBF20 /* JustOneWidgetExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		60F6B7012F4E9A0000CEBF20 /* JustOneTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 60F6B7082F4E9A0000CEBF20 /* Build configuration list for PBXNativeTarget "JustOneTests" */;
+			buildPhases = (
+				60F6B7032F4E9A0000CEBF20 /* Sources */,
+				60F6B7052F4E9A0000CEBF20 /* Frameworks */,
+				60F6B7042F4E9A0000CEBF20 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				60F6B70A2F4E9A0000CEBF20 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				60F6B7092F4E9A0000CEBF20 /* JustOneTests */,
+			);
+			name = JustOneTests;
+			productName = JustOneTests;
+			productReference = 60F6B7022F4E9A0000CEBF20 /* JustOneTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
 		};
 /* End PBXNativeTarget section */
 
@@ -83,6 +249,13 @@
 					60F6B5612F4E363700CEBF20 = {
 						CreatedOnToolsVersion = 26.1.1;
 					};
+					60F6B6CA2F515AD300CEBF20 = {
+						CreatedOnToolsVersion = 26.1.1;
+					};
+					60F6B7012F4E9A0000CEBF20 = {
+						CreatedOnToolsVersion = 26.1.1;
+						TestTargetID = 60F6B5612F4E363700CEBF20;
+					};
 				};
 			};
 			buildConfigurationList = 60F6B55D2F4E363700CEBF20 /* Build configuration list for PBXProject "JustOne" */;
@@ -94,18 +267,37 @@
 			);
 			mainGroup = 60F6B5592F4E363700CEBF20;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				60F6B7692F5244CC00CEBF20 /* XCLocalSwiftPackageReference "../zerosettle/ZeroSettleKit" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 60F6B5632F4E363700CEBF20 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
 				60F6B5612F4E363700CEBF20 /* JustOne */,
+				60F6B7012F4E9A0000CEBF20 /* JustOneTests */,
+				60F6B6CA2F515AD300CEBF20 /* JustOneWidgetExtension */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		60F6B5602F4E363700CEBF20 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		60F6B6C92F515AD300CEBF20 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		60F6B7042F4E9A0000CEBF20 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -122,7 +314,34 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		60F6B6C72F515AD300CEBF20 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		60F6B7032F4E9A0000CEBF20 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		60F6B6DE2F515AD400CEBF20 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 60F6B6CA2F515AD300CEBF20 /* JustOneWidgetExtension */;
+			targetProxy = 60F6B6DD2F515AD400CEBF20 /* PBXContainerItemProxy */;
+		};
+		60F6B70A2F4E9A0000CEBF20 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 60F6B5612F4E363700CEBF20 /* JustOne */;
+			targetProxy = 60F6B70B2F4E9A0000CEBF20 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		60F6B56B2F4E363800CEBF20 /* Debug */ = {
@@ -251,21 +470,26 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
+				CODE_SIGN_ENTITLEMENTS = JustOne/JustOne.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = YUM5K9J52M;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "Just One";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.lifestyle";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.1;
 				PRODUCT_BUNDLE_IDENTIFIER = io.zerosettle.JustOne;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -283,21 +507,26 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
+				CODE_SIGN_ENTITLEMENTS = JustOne/JustOne.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = YUM5K9J52M;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "Just One";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.lifestyle";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.1;
 				PRODUCT_BUNDLE_IDENTIFIER = io.zerosettle.JustOne;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -307,6 +536,114 @@
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		60F6B6E22F515AD400CEBF20 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = JustOneWidget/JustOneWidgetExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = YUM5K9J52M;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = JustOneWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = JustOneWidget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = io.zerosettle.JustOne.JustOneWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		60F6B6E32F515AD400CEBF20 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = JustOneWidget/JustOneWidgetExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = YUM5K9J52M;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = JustOneWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = JustOneWidget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = io.zerosettle.JustOne.JustOneWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		60F6B7062F4E9A0000CEBF20 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_ENTITLEMENTS = JustOneTests/JustOneTests.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = YUM5K9J52M;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = io.zerosettle.JustOneTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/JustOne.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/JustOne";
+			};
+			name = Debug;
+		};
+		60F6B7072F4E9A0000CEBF20 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_ENTITLEMENTS = JustOneTests/JustOneTests.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = YUM5K9J52M;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = io.zerosettle.JustOneTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/JustOne.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/JustOne";
 			};
 			name = Release;
 		};
@@ -331,7 +668,40 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+		60F6B6E12F515AD400CEBF20 /* Build configuration list for PBXNativeTarget "JustOneWidgetExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				60F6B6E22F515AD400CEBF20 /* Debug */,
+				60F6B6E32F515AD400CEBF20 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		60F6B7082F4E9A0000CEBF20 /* Build configuration list for PBXNativeTarget "JustOneTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				60F6B7062F4E9A0000CEBF20 /* Debug */,
+				60F6B7072F4E9A0000CEBF20 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 /* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		60F6B7692F5244CC00CEBF20 /* XCLocalSwiftPackageReference "../zerosettle/ZeroSettleKit" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../zerosettle/ZeroSettleKit;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		60F6B76A2F5244CC00CEBF20 /* ZeroSettleKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 60F6B7692F5244CC00CEBF20 /* XCLocalSwiftPackageReference "../zerosettle/ZeroSettleKit" */;
+			productName = ZeroSettleKit;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 60F6B55A2F4E363700CEBF20 /* Project object */;
 }

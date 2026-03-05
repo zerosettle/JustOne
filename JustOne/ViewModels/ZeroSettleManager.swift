@@ -41,7 +41,7 @@ class ZeroSettleManager {
 
     /// The highest-rank active subscription tier, derived from SDK entitlements.
     var activeSubscription: SubscriptionTier? {
-        Self.resolveActiveSubscription(from: ZeroSettle.shared.entitlements)
+        Self.resolveActiveSubscription(from: ZeroSettle.shared.activeEntitlements)
     }
 
     /// How the active subscription is billed, derived from SDK entitlements.
@@ -58,8 +58,28 @@ class ZeroSettleManager {
 
     var isAtHighestTier: Bool { activeSubscription == .yearly }
 
-    var canUpgradeToAnnual: Bool {
+    /// Whether the active subscription has been cancelled but is still active until period end.
+    var isSubscriptionCancelled: Bool {
         guard let tier = activeSubscription else { return false }
+        let entitlements = ZeroSettle.shared.activeEntitlements
+        let candidates = entitlements.filter { $0.productId == tier.productId }
+        let matching = candidates.first(where: { $0.source == .webCheckout })
+            ?? candidates.first
+        return matching?.isCancelled ?? false
+    }
+
+    /// When the cancelled subscription's access expires. `nil` if not cancelled or unknown.
+    var subscriptionExpiresAt: Date? {
+        guard let tier = activeSubscription else { return nil }
+        let entitlements = ZeroSettle.shared.activeEntitlements
+        let candidates = entitlements.filter { $0.productId == tier.productId }
+        let matching = candidates.first(where: { $0.source == .webCheckout })
+            ?? candidates.first
+        return matching?.expiresAt
+    }
+
+    var canUpgradeToAnnual: Bool {
+        guard let tier = activeSubscription, !isSubscriptionCancelled else { return false }
         return tier == .weekly || tier == .monthly
     }
 
@@ -70,9 +90,10 @@ class ZeroSettleManager {
     // MARK: - Resolution Logic (internal for testability)
 
     /// Returns the highest-rank active subscription tier from the given entitlements.
+    /// Expects active entitlements only (use `ZeroSettle.shared.activeEntitlements`).
     static func resolveActiveSubscription(from entitlements: [Entitlement]) -> SubscriptionTier? {
         for tier in SubscriptionTier.allCases.sorted(by: { $0.rank > $1.rank }) {
-            if entitlements.contains(where: { $0.productId == tier.productId && $0.isActive }) {
+            if entitlements.contains(where: { $0.productId == tier.productId }) {
                 return tier
             }
         }
@@ -80,17 +101,19 @@ class ZeroSettleManager {
     }
 
     /// Returns the billing provider for the given subscription and entitlements.
-    /// Prefers StoreKit when entitlements from both sources exist (e.g. user
-    /// switched from direct billing back to the App Store).
+    /// Expects active entitlements only (use `ZeroSettle.shared.activeEntitlements`).
     static func resolveBillingProvider(
         subscription: SubscriptionTier?,
         entitlements: [Entitlement]
     ) -> BillingProvider? {
         guard let tier = subscription else { return nil }
-        let matching = entitlements.filter { $0.productId == tier.productId }
-        guard !matching.isEmpty else { return nil }
-        if matching.contains(where: { $0.source == .storeKit }) { return .storeKit }
-        return .direct
+        // Prefer web checkout entitlement when both exist (e.g. after Switch & Save,
+        // the StoreKit entitlement is still active but the user is now on web billing).
+        let candidates = entitlements.filter { $0.productId == tier.productId }
+        let matching = candidates.first(where: { $0.source == .webCheckout })
+            ?? candidates.first
+        guard let source = matching?.source else { return nil }
+        return source == .storeKit ? .storeKit : .direct
     }
 
     // MARK: - Purchase Flows

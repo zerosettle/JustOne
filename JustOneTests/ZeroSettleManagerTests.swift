@@ -128,12 +128,14 @@ struct ZeroSettleManagerTests {
         #expect(result == .yearly)
     }
 
-    @Test func resolveActiveSubscriptionIgnoresInactive() {
-        let entitlements = [
+    @Test func resolveActiveSubscriptionOnlyReceivesActive() {
+        // Simulates the call site filtering: only active entitlements are passed in
+        let all = [
             mockEntitlement(productId: SubscriptionTier.yearly.productId, isActive: false),
             mockEntitlement(productId: SubscriptionTier.weekly.productId, isActive: true),
         ]
-        let result = ZeroSettleManager.resolveActiveSubscription(from: entitlements)
+        let active = all.filter(\.isActive)
+        let result = ZeroSettleManager.resolveActiveSubscription(from: active)
         #expect(result == .weekly)
     }
 

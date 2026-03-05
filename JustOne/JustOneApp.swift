@@ -19,9 +19,9 @@ struct JustOneApp: App {
     init() {
 #if DEBUG
         let key = "zs_pk_test_c2f95d4995ab13385b6064d4af428eb7cc3d0218a9754b41"
-//        ZeroSettle.baseURLOverride = URL(string: "http://192.168.1.159:8000/v1")
+//        ZeroSettle.baseURLOverride = URL(string: "https://api.zerosettle.ngrok.app/v1")
 #else
-        let key = "zs_pk_live_REPLACE_WITH_PRODUCTION_KEY"
+        let key = "zs_pk_live_2c44f5c468ff4907322a0f8825e976bce0a7be46571af88b"
 #endif
         ZeroSettle.shared.configure(.init(publishableKey: key))
     }
@@ -54,3 +54,4 @@ struct JustOneApp: App {
         .modelContainer(SharedModelContainer.create())
     }
 }
+

@@ -324,12 +324,10 @@ struct HomeDashboardView: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
-        .glassEffect(
-            filled
-                ? .regular.tint(Color.justSuccess).interactive()
-                : .regular.interactive(),
-            in: .capsule
-        )
+        .modifier(GlassEffectModifier(
+            tint: filled ? Color.justSuccess : nil,
+            shape: .capsule
+        ))
     }
 
     private var greetingSubtitle: String {
@@ -370,7 +368,7 @@ struct HomeDashboardView: View {
                                 .padding(.vertical, 5)
                         }
                         .buttonStyle(.borderless)
-                        .glassEffect(.regular.interactive(), in: .capsule)
+                        .modifier(GlassEffectModifier(shape: .capsule))
                         .transition(.opacity)
                     } else {
                         Text("Last \(min(heatmapHistoryWeeks, heatmapWeeks)) weeks")
@@ -857,7 +855,7 @@ struct HomeDashboardView: View {
                 .font(.title2.weight(.semibold))
                 .foregroundColor(.white)
                 .frame(width: 60, height: 60)
-                .glassEffect(.regular.tint(Color.justPrimary.opacity(0.8)).interactive(), in: .circle)
+                .modifier(GlassEffectModifier(tint: Color.justPrimary.opacity(0.8), shape: .circle))
         }
     }
 
@@ -899,6 +897,44 @@ struct HomeDashboardView: View {
             showAddJourney = true
         } else {
             showAddStandard = true
+        }
+    }
+}
+
+// MARK: - Glass Effect Compatibility
+
+/// Applies `.glassEffect` on iOS 26+, falls back to a tinted background on older versions.
+private struct GlassEffectModifier: ViewModifier {
+    var tint: Color?
+    var shape: GlassShape = .capsule
+
+    enum GlassShape {
+        case capsule, circle
+    }
+
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            switch shape {
+            case .capsule:
+                if let tint {
+                    content.glassEffect(.regular.tint(tint).interactive(), in: .capsule)
+                } else {
+                    content.glassEffect(.regular.interactive(), in: .capsule)
+                }
+            case .circle:
+                if let tint {
+                    content.glassEffect(.regular.tint(tint).interactive(), in: .circle)
+                } else {
+                    content.glassEffect(.regular.interactive(), in: .circle)
+                }
+            }
+        } else {
+            switch shape {
+            case .capsule:
+                content.background(tint?.opacity(0.15) ?? Color(.secondarySystemBackground), in: Capsule())
+            case .circle:
+                content.background(tint ?? Color(.secondarySystemBackground), in: Circle())
+            }
         }
     }
 }

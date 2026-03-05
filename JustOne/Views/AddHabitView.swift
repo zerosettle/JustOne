@@ -48,7 +48,6 @@ struct AddHabitView: View {
             .onTapGesture { isNameFocused = false }
             .navigationTitle("New Habit")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackgroundVisibility(.automatic)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }

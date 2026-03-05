@@ -41,12 +41,7 @@ struct ConsumableShopView: View {
                     }
                     .padding(.top, 20)
                 }
-                .onScrollGeometryChange(for: ScrollMetrics.self) { geo in
-                    ScrollMetrics(
-                        offset: geo.contentOffset.y,
-                        maxOffset: geo.contentSize.height - geo.containerSize.height
-                    )
-                } action: { old, new in
+                .onScrollGeometryChangeIfAvailable { old, new in
                     handleScroll(from: old, to: new)
                 }
 
@@ -569,4 +564,31 @@ private enum ShopSelection: Equatable {
 private struct ScrollMetrics: Equatable {
     let offset: CGFloat
     let maxOffset: CGFloat
+}
+
+// MARK: - iOS 18+ Scroll Geometry Compatibility
+
+private struct ScrollGeometryChangeModifier: ViewModifier {
+    let action: (ScrollMetrics, ScrollMetrics) -> Void
+
+    func body(content: Content) -> some View {
+        if #available(iOS 18.0, *) {
+            content.onScrollGeometryChange(for: ScrollMetrics.self) { geo in
+                ScrollMetrics(
+                    offset: geo.contentOffset.y,
+                    maxOffset: geo.contentSize.height - geo.containerSize.height
+                )
+            } action: { old, new in
+                action(old, new)
+            }
+        } else {
+            content
+        }
+    }
+}
+
+extension View {
+    fileprivate func onScrollGeometryChangeIfAvailable(action: @escaping (ScrollMetrics, ScrollMetrics) -> Void) -> some View {
+        modifier(ScrollGeometryChangeModifier(action: action))
+    }
 }

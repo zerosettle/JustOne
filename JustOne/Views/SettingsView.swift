@@ -109,6 +109,8 @@ struct SettingsView: View {
                         migrationBanner(manager: manager, offer: offer)
                     }
 
+                    migrationTipSection
+
                     subscriptionCard
                     streakSaverCard
                     reminderCard
@@ -381,6 +383,23 @@ struct SettingsView: View {
         .glassCard()
     }
 
+    // MARK: - Migration Tip (SDK built-in view)
+
+    private var migrationTipSection: some View {
+        MigrationTipView(
+            userId: authVM.appleUserID ?? "",
+            backgroundColor: Color(.secondarySystemGroupedBackground),
+            onEvent: { event in
+                switch event {
+                case .migrationCompleted:
+                    Task { await iapManager.syncWithSDK(userId: authVM.appleUserID ?? "") }
+                default:
+                    break
+                }
+            }
+        )
+    }
+
     // MARK: - Subscription Card
 
     private var subscriptionCard: some View {
@@ -399,51 +418,89 @@ struct SettingsView: View {
                         Text("Unlimited streaks")
                             .font(.subheadline)
 
-                        Text("\(tier.displayName) \u{00B7} \(tier.price)")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                        // Show actual price from catalog when on direct billing
+                        if !iapManager.isStoreKitBilling,
+                           let product = ZeroSettle.shared.product(for: tier.productId),
+                           let webPrice = product.webPrice {
+                            Text("\(tier.displayName) \u{00B7} \(webPrice.formatted)")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        } else {
+                            Text("\(tier.displayName) \u{00B7} \(tier.price)")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
                     }
 
                     Spacer()
 
-                    Text("Active")
-                        .font(.caption.weight(.semibold))
-                        .foregroundColor(.justSuccess)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 4)
-                        .background(Color.justSuccess.opacity(0.12), in: Capsule())
-                }
-
-                if iapManager.canUpgradeToAnnual && isUpgradeAvailable {
-                    Button { showAnnualUpgrade = true } label: {
-                        HStack {
-                            Image(systemName: "arrow.up.circle.fill")
-                            Text("Upgrade to Annual")
-                                .fontWeight(.semibold)
+                    VStack(spacing: 4) {
+                        if iapManager.isSubscriptionCancelled {
+                            Text("Cancelling")
+                                .font(.caption.weight(.semibold))
+                                .foregroundColor(.orange)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 4)
+                                .background(Color.orange.opacity(0.12), in: Capsule())
+                        } else {
+                            Text("Active")
+                                .font(.caption.weight(.semibold))
+                                .foregroundColor(.justSuccess)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 4)
+                                .background(Color.justSuccess.opacity(0.12), in: Capsule())
                         }
-                        .font(.subheadline)
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 44)
-                        .background(LinearGradient.premiumGradient, in: RoundedRectangle(cornerRadius: 12))
+
+                        if !iapManager.isStoreKitBilling {
+                            Text("Direct billing")
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                        }
                     }
                 }
 
-                HStack {
-                    if !iapManager.isAtHighestTier {
-                        Button { showPremiumUpsell = true } label: {
-                            Text("Change plan")
+                if iapManager.isSubscriptionCancelled {
+                    if let expiresAt = iapManager.subscriptionExpiresAt {
+                        HStack(spacing: 6) {
+                            Image(systemName: "clock")
+                                .foregroundColor(.orange)
+                            Text("Your subscription expires \(expiresAt, style: .date)")
                                 .font(.subheadline)
-                                .foregroundColor(.justPrimary)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                } else {
+                    if iapManager.canUpgradeToAnnual && isUpgradeAvailable {
+                        Button { showAnnualUpgrade = true } label: {
+                            HStack {
+                                Image(systemName: "arrow.up.circle.fill")
+                                Text("Upgrade to Annual")
+                                    .fontWeight(.semibold)
+                            }
+                            .font(.subheadline)
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 44)
+                            .background(LinearGradient.premiumGradient, in: RoundedRectangle(cornerRadius: 12))
                         }
                     }
 
-                    Spacer()
+                    HStack {
+                        if !iapManager.isAtHighestTier {
+                            Button { showPremiumUpsell = true } label: {
+                                Text("Change plan")
+                                    .font(.subheadline)
+                                    .foregroundColor(.justPrimary)
+                            }
+                        }
 
-                    Button { showCancelFlow = true } label: {
-                        Text("Cancel")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
+                        Spacer()
+
+                        Button { showCancelFlow = true } label: {
+                            Text("Cancel")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                        }
                     }
                 }
             } else {

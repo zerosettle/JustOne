@@ -2,7 +2,7 @@
 //  JourneyConfig.swift
 //  JustOne
 //
-//  Data model for Dynamic Journey habits — progressive overload tracking.
+//  Data model for Progressive Journey habits — progressive overload tracking.
 //  Stores value type, direction, milestones, and level-up history.
 //
 

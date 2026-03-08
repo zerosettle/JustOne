@@ -12,6 +12,8 @@ import SwiftUI
 struct HabitRowView: View {
     let habit: Habit
     var onToggleToday: () -> Void = {}
+    var onAffirmToday: (() -> Void)? = nil
+    var onSlipToday: (() -> Void)? = nil
 
     private let today = Date()
 
@@ -20,10 +22,10 @@ struct HabitRowView: View {
             // Icon badge
             Image(systemName: habit.icon)
                 .font(.title2)
-                .foregroundColor(habit.accentColor.color)
+                .foregroundColor(habit.displayColor)
                 .frame(width: 48, height: 48)
                 .background(
-                    habit.accentColor.color.opacity(0.15),
+                    habit.displayColor.opacity(0.15),
                     in: RoundedRectangle(cornerRadius: 14)
                 )
 
@@ -58,14 +60,18 @@ struct HabitRowView: View {
 
             // Quick check-in
             if habit.status != .paused {
-                Button {
-                    onToggleToday()
-                } label: {
-                    Image(systemName: toggleIconName)
-                        .font(.system(size: 28))
-                        .foregroundColor(toggleIconColor)
+                if habit.isInverse && habit.status == .active {
+                    inverseActionArea
+                } else {
+                    Button {
+                        onToggleToday()
+                    } label: {
+                        Image(systemName: toggleIconName)
+                            .font(.system(size: 28))
+                            .foregroundColor(toggleIconColor)
+                    }
+                    .buttonStyle(.borderless)
                 }
-                .buttonStyle(.borderless)
             }
 
             Image(systemName: "chevron.right")
@@ -77,21 +83,57 @@ struct HabitRowView: View {
         .opacity(habit.status == .paused ? 0.55 : 1.0)
     }
 
-    // MARK: - Toggle Icon
+    // MARK: - Inverse Action Area
+
+    @ViewBuilder
+    private var inverseActionArea: some View {
+        let affirmed = habit.isAffirmed(on: today)
+        let slipped = !habit.isCompleted(on: today) // isCompleted inverts for inverse, so !completed = slipped
+
+        if affirmed {
+            // Affirmed state — tap to undo
+            Button { onAffirmToday?() } label: {
+                Image(systemName: "checkmark.shield.fill")
+                    .font(.system(size: 28))
+                    .foregroundColor(.justSuccess)
+            }
+            .buttonStyle(.borderless)
+        } else if slipped {
+            // Slipped state — tap to undo
+            Button { onSlipToday?() } label: {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.system(size: 28))
+                    .foregroundColor(.justWarning)
+            }
+            .buttonStyle(.borderless)
+        } else {
+            // Not interacted — show two stacked buttons
+            VStack(spacing: 4) {
+                Button { onAffirmToday?() } label: {
+                    Image(systemName: "checkmark.shield.fill")
+                        .font(.system(size: 20))
+                        .foregroundColor(.justSuccess)
+                }
+                .buttonStyle(.borderless)
+
+                Button { onSlipToday?() } label: {
+                    Image(systemName: "xmark.circle")
+                        .font(.system(size: 16))
+                        .foregroundColor(.secondary.opacity(0.4))
+                }
+                .buttonStyle(.borderless)
+            }
+        }
+    }
+
+    // MARK: - Toggle Icon (non-inverse only)
 
     private var toggleIconName: String {
-        if habit.isInverse {
-            // Inverse: completed means "holding strong", uncompleted means "slipped"
-            return habit.isCompleted(on: today) ? "checkmark.shield.fill" : "xmark.circle.fill"
-        }
         return habit.isCompleted(on: today) ? "checkmark.circle.fill" : "circle"
     }
 
     private var toggleIconColor: Color {
-        if habit.isInverse {
-            return habit.isCompleted(on: today) ? .justSuccess : .justWarning
-        }
-        return habit.isCompleted(on: today) ? habit.accentColor.color : .secondary.opacity(0.3)
+        return habit.isCompleted(on: today) ? habit.displayColor : .secondary.opacity(0.3)
     }
 
     // MARK: - Mini Heatmap (14 days)
@@ -110,18 +152,23 @@ struct HabitRowView: View {
 
     private func miniHeatmapColor(date: Date, isCompleted: Bool) -> Color {
         if habit.isInverse {
-            // Inverse: green for clean days, warning for slip-ups
-            return isCompleted
-                ? Color.justSuccess.opacity(0.5)
-                : Color.justWarning.opacity(0.7)
+            let slipped = !isCompleted  // isCompleted inverts for inverse
+            let affirmed = habit.isAffirmed(on: date)
+            if affirmed {
+                return Color.justSuccess               // bright green — actively checked in
+            } else if slipped {
+                return Color.justWarning.opacity(0.7)  // warning — slipped
+            } else {
+                return Color.justSuccess.opacity(0.25) // dim — passive clean day
+            }
         }
         guard isCompleted else {
-            return habit.accentColor.color.opacity(0.12)
+            return habit.displayColor.opacity(0.12)
         }
         if let config = habit.journeyConfig {
             let intensity = config.levelIntensity(on: Habit.dateKey(for: date))
-            return habit.accentColor.color.opacity(0.4 + intensity * 0.6)
+            return habit.displayColor.opacity(0.4 + intensity * 0.6)
         }
-        return habit.accentColor.color
+        return habit.displayColor
     }
 }

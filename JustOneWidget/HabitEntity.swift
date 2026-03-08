@@ -17,6 +17,7 @@ struct HabitEntity: AppEntity {
     var name: String
     var icon: String
     var accentColorName: String // raw value of HabitAccentColor
+    var customColorHex: String?
 
     var displayRepresentation: DisplayRepresentation {
         DisplayRepresentation(title: "\(name)", image: .init(systemName: icon))
@@ -59,7 +60,8 @@ extension Habit {
             id: id,
             name: name,
             icon: icon,
-            accentColorName: accentColor.rawValue
+            accentColorName: accentColor.rawValue,
+            customColorHex: customColorHex
         )
     }
 }

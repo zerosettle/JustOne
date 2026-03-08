@@ -114,7 +114,7 @@ struct StatsSheetView: View {
                                 .font(.subheadline)
                                 .foregroundColor(
                                     habit.isCompleted(on: Date())
-                                        ? habit.accentColor.color
+                                        ? habit.displayColor
                                         : .secondary.opacity(0.3)
                                 )
                             Text(habit.name)
@@ -245,7 +245,7 @@ struct StatsSheetView: View {
         return HStack(spacing: 12) {
             Image(systemName: habit.icon)
                 .font(.caption)
-                .foregroundColor(habit.accentColor.color)
+                .foregroundColor(habit.displayColor)
                 .frame(width: 24, height: 24)
 
             VStack(alignment: .leading, spacing: 4) {
@@ -261,9 +261,9 @@ struct StatsSheetView: View {
                 GeometryReader { geo in
                     ZStack(alignment: .leading) {
                         RoundedRectangle(cornerRadius: 3)
-                            .fill(habit.accentColor.color.opacity(0.15))
+                            .fill(habit.displayColor.opacity(0.15))
                         RoundedRectangle(cornerRadius: 3)
-                            .fill(habit.accentColor.color)
+                            .fill(habit.displayColor)
                             .frame(width: geo.size.width * fraction)
                     }
                 }

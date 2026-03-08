@@ -14,11 +14,14 @@ struct PremiumUpsellView: View {
     @Environment(AuthViewModel.self) var authVM
     @Environment(\.dismiss) var dismiss
 
-    var onWebCheckout: ((ZSProduct) -> Void)?
+    var onStoreKitCheckout: ((SubscriptionTier) -> Void)?
 
     @State private var selectedTier: SubscriptionTier = .yearly
     @State private var errorMessage: String?
+    @State private var webCheckoutProduct: ZSProduct?
+    @State private var isLoadingWebCheckout = false
     @State private var contentHeight: CGFloat = 600
+    @Environment(\.scenePhase) private var scenePhase
 
     private var upgradeTiers: [SubscriptionTier] {
         guard let current = iapManager.activeSubscription else {
@@ -68,6 +71,23 @@ struct PremiumUpsellView: View {
                 }
             }
         }
+        .checkoutSheet(
+            item: $webCheckoutProduct,
+            userId: authVM.appleUserID ?? "",
+            preload: .all,
+            onPresent: { isLoadingWebCheckout = false }
+        ) {
+            if let product = webCheckoutProduct {
+                CheckoutSheetHeader(product: product)
+            }
+        } onComplete: { result in
+            isLoadingWebCheckout = false
+            Task {
+                let error = await iapManager.processWebCheckout(result, userId: authVM.appleUserID)
+                if let error { errorMessage = error }
+                if case .success = result { dismiss() }
+            }
+        }
         .alert("Purchase Error", isPresented: Binding(
             get: { errorMessage != nil },
             set: { if !$0 { errorMessage = nil } }
@@ -75,6 +95,9 @@ struct PremiumUpsellView: View {
             Button("OK", role: .cancel) {}
         } message: {
             Text(errorMessage ?? "")
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase != .active { isLoadingWebCheckout = false }
         }
     }
 
@@ -195,21 +218,17 @@ struct PremiumUpsellView: View {
             webPrice: zsProduct?.webPrice?.formatted,
             savingsPercent: zsProduct?.savingsPercent,
             onStoreKit: {
-                Task {
-                    do {
-                        let success = try await iapManager.purchaseSubscription(selectedTier, userId: authVM.appleUserID)
-                        if success { dismiss() }
-                    } catch {
-                        errorMessage = error.localizedDescription
-                    }
-                }
+                onStoreKitCheckout?(selectedTier)
+                dismiss()
             },
             onWeb: {
                 if let zsProduct {
-                    onWebCheckout?(zsProduct)
+                    isLoadingWebCheckout = true
+                    webCheckoutProduct = zsProduct
                 }
             },
-            isDisabled: iapManager.isPurchasing
+            isDisabled: iapManager.isPurchasing,
+            isLoadingWeb: isLoadingWebCheckout
         )
     }
 
@@ -221,7 +240,7 @@ struct PremiumUpsellView: View {
                 Task {
                     do {
                         try await iapManager.restorePurchases(userId: authVM.appleUserID)
-                    } catch {
+                    } catch where !ZeroSettleManager.isCancellation(error) {
                         errorMessage = error.localizedDescription
                     }
                 }

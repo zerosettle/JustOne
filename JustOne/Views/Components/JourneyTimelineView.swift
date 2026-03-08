@@ -12,6 +12,7 @@ struct JourneyTimelineView: View {
     let journeyConfig: JourneyConfig
     let accentColor: Color
 
+    @State private var containerWidth: CGFloat = 0
     private var milestones: [Double] { journeyConfig.milestones }
 
     var body: some View {
@@ -27,7 +28,14 @@ struct JourneyTimelineView: View {
             }
             .padding(.horizontal, 4)
             .padding(.vertical, 8)
+            .frame(minWidth: containerWidth)
         }
+        .background(
+            GeometryReader { geo in
+                Color.clear.preference(key: TimelineWidthKey.self, value: geo.size.width)
+            }
+        )
+        .onPreferenceChange(TimelineWidthKey.self) { containerWidth = $0 }
     }
 
     // MARK: - Milestone Node
@@ -91,5 +99,12 @@ struct JourneyTimelineView: View {
         if index < journeyConfig.currentLevel { return .completed }
         if index == journeyConfig.currentLevel { return .current }
         return .future
+    }
+}
+
+private struct TimelineWidthKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
     }
 }

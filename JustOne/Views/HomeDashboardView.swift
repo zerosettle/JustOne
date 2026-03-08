@@ -39,8 +39,8 @@ struct HomeDashboardView: View {
     @State private var heatmapContainerWidth: CGFloat = 0
     @State private var statsSheetMode: StatsSheetMode?
     @State private var showArchived = false
-    @State private var webCheckoutProduct: ZSProduct?
     @State private var showPreviousDayCatchUp = false
+    @State private var pendingStoreKitTier: SubscriptionTier?
     @Environment(\.scenePhase) private var scenePhase
 
     private let heatmapCellSpacing: CGFloat = 3
@@ -189,22 +189,10 @@ struct HomeDashboardView: View {
                         }
                 }
             }
-            .sheet(isPresented: $showPremiumUpsell) {
-                PremiumUpsellView(onWebCheckout: { webCheckoutProduct = $0 })
-            }
-            .checkoutSheet(
-                item: $webCheckoutProduct,
-                userId: authVM.appleUserID ?? "",
-                preload: .all,
-                onPresent: {
-                    showPremiumUpsell = false
-                }
-            ) {
-                if let product = webCheckoutProduct {
-                    CheckoutSheetHeader(product: product)
-                }
-            } onComplete: { result in
-                Task { _ = await iapManager.processWebCheckout(result, userId: authVM.appleUserID) }
+            .sheet(isPresented: $showPremiumUpsell, onDismiss: handlePendingStoreKitPurchase) {
+                PremiumUpsellView(onStoreKitCheckout: { tier in
+                    pendingStoreKitTier = tier
+                })
             }
             .sheet(item: $statsSheetMode) { mode in
                 StatsSheetView(mode: mode, habits: habits)
@@ -564,7 +552,7 @@ struct HomeDashboardView: View {
                         .font(.subheadline)
                         .foregroundColor(
                             habit.isCompleted(on: date)
-                                ? habit.accentColor.color
+                                ? habit.displayColor
                                 : .secondary.opacity(0.3)
                         )
 
@@ -638,18 +626,42 @@ struct HomeDashboardView: View {
                         navigatingHabit = habit
                     }
                 } label: {
-                    HabitRowView(habit: habit) {
-                        guard habit.status == .active else { return }
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            habit.toggleCompletionAndReloadWidget(on: Date())
-                        }
-                        UIImpactFeedbackGenerator(style: habit.isCompleted(on: Date()) ? .medium : .light).impactOccurred()
-                        if habit.isCompleted(on: Date()) && habit.qualifiesForLevelUp() {
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                                levelUpHabit = habit
+                    HabitRowView(
+                        habit: habit,
+                        onToggleToday: {
+                            guard habit.status == .active else { return }
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                habit.toggleCompletionAndReloadWidget(on: Date())
                             }
+                            UIImpactFeedbackGenerator(style: habit.isCompleted(on: Date()) ? .medium : .light).impactOccurred()
+                            if habit.isCompleted(on: Date()) && habit.qualifiesForLevelUp() {
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                                    levelUpHabit = habit
+                                }
+                            }
+                        },
+                        onAffirmToday: {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                if habit.isAffirmed(on: Date()) {
+                                    habit.undoAffirmAndReloadWidget(on: Date())
+                                } else {
+                                    habit.affirmDayAndReloadWidget(on: Date())
+                                }
+                            }
+                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                        },
+                        onSlipToday: {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                if !habit.isCompleted(on: Date()) {
+                                    // Currently slipped — undo
+                                    habit.undoSlipAndReloadWidget(on: Date())
+                                } else {
+                                    habit.logSlipAndReloadWidget(on: Date())
+                                }
+                            }
+                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
                         }
-                    }
+                    )
                 }
                 .buttonStyle(LiquidPressStyle())
                 .swipeActions(edge: .trailing, allowsFullSwipe: false) {
@@ -848,7 +860,7 @@ struct HomeDashboardView: View {
             Button {
                 handleAddTapped(journey: true)
             } label: {
-                Label("Dynamic Journey", systemImage: "chart.line.uptrend.xyaxis")
+                Label("Progressive Journey", systemImage: "chart.line.uptrend.xyaxis")
             }
         } label: {
             Image(systemName: "plus")
@@ -884,6 +896,18 @@ struct HomeDashboardView: View {
             let hadIncomplete = activeHabits.contains { !$0.isCompleted(on: yesterday) }
             if hadIncomplete {
                 showPreviousDayCatchUp = true
+            }
+        }
+    }
+
+    private func handlePendingStoreKitPurchase() {
+        guard let tier = pendingStoreKitTier else { return }
+        pendingStoreKitTier = nil
+        Task {
+            do {
+                _ = try await iapManager.purchaseSubscription(tier, userId: authVM.appleUserID)
+            } catch where !ZeroSettleManager.isCancellation(error) {
+                // StoreKit purchase errors are surfaced by the system dialog
             }
         }
     }

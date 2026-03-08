@@ -2,7 +2,7 @@
 //  AddHabitWizardView.swift
 //  JustOne
 //
-//  3-step paged wizard for creating Dynamic Journey habits.
+//  3-step paged wizard for creating Progressive Journey habits.
 //  Step 1: Basics (name, icon, color, frequency)
 //  Step 2: Journey setup (value type, start, goal, increment, pacing)
 //  Step 3: Review and create
@@ -31,9 +31,15 @@ struct AddHabitWizardView: View {
     @State private var name = ""
     @State private var selectedIcon = "star.fill"
     @State private var selectedColor: HabitAccentColor = .purple
+    @State private var customColor: Color = .habitPurple
+    @State private var isCustomColor = false
     @State private var frequencyPerWeek = 7
     @State private var isInverse = false
     @FocusState private var isNameFocused: Bool
+
+    private var effectiveColor: Color {
+        isCustomColor ? customColor : selectedColor.color
+    }
 
     private let iconOptions = [
         "star.fill", "dumbbell.fill", "book.fill", "drop.fill",
@@ -75,15 +81,6 @@ struct AddHabitWizardView: View {
                 default: step1Basics
                 }
             }
-            .mask(
-                VStack(spacing: 0) {
-                    LinearGradient(colors: [.clear, .black], startPoint: .top, endPoint: .bottom)
-                        .frame(height: 16)
-                    Rectangle().fill(.black)
-                    LinearGradient(colors: [.black, .clear], startPoint: .top, endPoint: .bottom)
-                        .frame(height: 50)
-                }
-            )
             .id(currentStep)
             .transition(.asymmetric(
                 insertion: .move(edge: isGoingForward ? .trailing : .leading),
@@ -100,6 +97,11 @@ struct AddHabitWizardView: View {
         .onTapGesture {
             UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
         }
+        .onChange(of: selectedIcon) { isNameFocused = false }
+        .onChange(of: selectedColor) { isNameFocused = false }
+        .onChange(of: isInverse) { isNameFocused = false }
+        .onChange(of: frequencyPerWeek) { isNameFocused = false }
+        .onChange(of: customColor) { isNameFocused = false }
         .onAppear { populateFromEditingHabit() }
     }
 
@@ -109,7 +111,7 @@ struct AddHabitWizardView: View {
         HStack(spacing: 8) {
             ForEach(0..<totalSteps, id: \.self) { step in
                 Capsule()
-                    .fill(step <= currentStep ? selectedColor.color : Color.secondary.opacity(0.2))
+                    .fill(step <= currentStep ? effectiveColor : Color.secondary.opacity(0.2))
                     .frame(width: step == currentStep ? 24 : 8, height: 8)
                     .animation(.easeInOut(duration: 0.2), value: currentStep)
             }
@@ -134,7 +136,7 @@ struct AddHabitWizardView: View {
             Button(isEditing ? "Save" : "Create", systemImage: "checkmark") {
                 createOrSaveJourney()
             }
-            .tint(selectedColor.color)
+            .tint(effectiveColor)
         } else {
             Button("Next", systemImage: "chevron.right") {
                 syncTimeValues()
@@ -142,7 +144,7 @@ struct AddHabitWizardView: View {
                 withAnimation { currentStep += 1 }
             }
             .disabled(!canAdvance)
-            .tint(canAdvance ? selectedColor.color : nil)
+            .tint(canAdvance ? effectiveColor : nil)
         }
     }
 
@@ -168,10 +170,10 @@ struct AddHabitWizardView: View {
                 VStack(spacing: 12) {
                     Image(systemName: selectedIcon)
                         .font(.system(size: 40))
-                        .foregroundColor(selectedColor.color)
+                        .foregroundColor(effectiveColor)
                         .frame(width: 72, height: 72)
                         .background(
-                            selectedColor.color.opacity(0.12),
+                            effectiveColor.opacity(0.12),
                             in: RoundedRectangle(cornerRadius: 20)
                         )
 
@@ -179,12 +181,12 @@ struct AddHabitWizardView: View {
                         .font(.title3.weight(.semibold))
                         .foregroundColor(name.isEmpty ? .secondary : .primary)
 
-                    Text("Dynamic Journey")
+                    Text("Progressive Journey")
                         .font(.caption)
-                        .foregroundColor(selectedColor.color)
+                        .foregroundColor(effectiveColor)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 4)
-                        .background(selectedColor.color.opacity(0.12), in: Capsule())
+                        .background(effectiveColor.opacity(0.12), in: Capsule())
                 }
                 .padding(24)
                 .frame(maxWidth: .infinity)
@@ -204,7 +206,7 @@ struct AddHabitWizardView: View {
                     }
 
                     if isInverse {
-                        BreakHabitExplainer(accentColor: selectedColor.color)
+                        BreakHabitExplainer(accentColor: effectiveColor)
                             .transition(.opacity.combined(with: .move(edge: .top)))
                     }
                 }
@@ -234,12 +236,12 @@ struct AddHabitWizardView: View {
                             Button { selectedIcon = icon } label: {
                                 Image(systemName: icon)
                                     .font(.title3)
-                                    .foregroundColor(icon == selectedIcon ? .white : selectedColor.color)
+                                    .foregroundColor(icon == selectedIcon ? .white : effectiveColor)
                                     .frame(width: 48, height: 48)
                                     .background(
                                         icon == selectedIcon
-                                            ? selectedColor.color
-                                            : selectedColor.color.opacity(0.10),
+                                            ? effectiveColor
+                                            : effectiveColor.opacity(0.10),
                                         in: RoundedRectangle(cornerRadius: 12)
                                     )
                             }
@@ -256,12 +258,15 @@ struct AddHabitWizardView: View {
 
                     HStack(spacing: 12) {
                         ForEach(HabitAccentColor.allCases) { color in
-                            Button { selectedColor = color } label: {
+                            Button {
+                                selectedColor = color
+                                isCustomColor = false
+                            } label: {
                                 Circle()
                                     .fill(color.color)
                                     .frame(width: 36, height: 36)
                                     .overlay {
-                                        if selectedColor == color {
+                                        if !isCustomColor && selectedColor == color {
                                             Circle()
                                                 .stroke(Color.white, lineWidth: 3)
                                                 .frame(width: 28, height: 28)
@@ -269,46 +274,28 @@ struct AddHabitWizardView: View {
                                     }
                             }
                         }
+
+                        ColorPicker("", selection: $customColor, supportsOpacity: false)
+                            .labelsHidden()
+                            .frame(width: 36, height: 36)
+                            .overlay {
+                                if isCustomColor {
+                                    Circle()
+                                        .stroke(Color.white, lineWidth: 3)
+                                        .frame(width: 28, height: 28)
+                                }
+                            }
+                            .onChange(of: customColor) {
+                                isCustomColor = true
+                                isNameFocused = false
+                            }
+
                         Spacer()
                     }
                     .padding(16)
                     .glassCard()
                 }
 
-                // Frequency picker
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Weekly Goal")
-                        .font(.subheadline.weight(.semibold))
-
-                    HStack {
-                        Text("\(frequencyPerWeek)\u{00D7} per week")
-                            .font(.headline)
-
-                        Spacer()
-
-                        HStack(spacing: 16) {
-                            Button {
-                                if frequencyPerWeek > 1 { frequencyPerWeek -= 1 }
-                            } label: {
-                                Image(systemName: "minus.circle.fill")
-                                    .font(.title2)
-                                    .foregroundColor(frequencyPerWeek > 1 ? selectedColor.color : .gray.opacity(0.3))
-                            }
-                            .disabled(frequencyPerWeek <= 1)
-
-                            Button {
-                                if frequencyPerWeek < 7 { frequencyPerWeek += 1 }
-                            } label: {
-                                Image(systemName: "plus.circle.fill")
-                                    .font(.title2)
-                                    .foregroundColor(frequencyPerWeek < 7 ? selectedColor.color : .gray.opacity(0.3))
-                            }
-                            .disabled(frequencyPerWeek >= 7)
-                        }
-                    }
-                    .padding(16)
-                    .glassCard()
-                }
             }
             .padding(20)
             .padding(.bottom, 20)
@@ -342,13 +329,13 @@ struct AddHabitWizardView: View {
                                     Text(type.displayName)
                                         .font(.caption.weight(.medium))
                                 }
-                                .foregroundColor(valueType == type ? .white : selectedColor.color)
+                                .foregroundColor(valueType == type ? .white : effectiveColor)
                                 .frame(maxWidth: .infinity)
                                 .frame(height: 64)
                                 .background(
                                     valueType == type
-                                        ? selectedColor.color
-                                        : selectedColor.color.opacity(0.10),
+                                        ? effectiveColor
+                                        : effectiveColor.opacity(0.10),
                                     in: RoundedRectangle(cornerRadius: 12)
                                 )
                             }
@@ -420,7 +407,7 @@ struct AddHabitWizardView: View {
                             } label: {
                                 Image(systemName: "minus.circle.fill")
                                     .font(.title2)
-                                    .foregroundColor(pacingDays > 1 ? selectedColor.color : .gray.opacity(0.3))
+                                    .foregroundColor(pacingDays > 1 ? effectiveColor : .gray.opacity(0.3))
                             }
                             .disabled(pacingDays <= 1)
 
@@ -429,12 +416,49 @@ struct AddHabitWizardView: View {
                             } label: {
                                 Image(systemName: "plus.circle.fill")
                                     .font(.title2)
-                                    .foregroundColor(selectedColor.color)
+                                    .foregroundColor(effectiveColor)
                             }
                         }
                     }
                     .padding(16)
                     .glassCard()
+                }
+
+                // Weekly goal (hidden for frequency-type journeys which derive it from startValue)
+                if valueType != .frequency {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Weekly Goal")
+                            .font(.subheadline.weight(.semibold))
+
+                        HStack {
+                            Text("\(frequencyPerWeek)\u{00D7} per week")
+                                .font(.headline)
+
+                            Spacer()
+
+                            HStack(spacing: 16) {
+                                Button {
+                                    if frequencyPerWeek > 1 { frequencyPerWeek -= 1 }
+                                } label: {
+                                    Image(systemName: "minus.circle.fill")
+                                        .font(.title2)
+                                        .foregroundColor(frequencyPerWeek > 1 ? effectiveColor : .gray.opacity(0.3))
+                                }
+                                .disabled(frequencyPerWeek <= 1)
+
+                                Button {
+                                    if frequencyPerWeek < 7 { frequencyPerWeek += 1 }
+                                } label: {
+                                    Image(systemName: "plus.circle.fill")
+                                        .font(.title2)
+                                        .foregroundColor(frequencyPerWeek < 7 ? effectiveColor : .gray.opacity(0.3))
+                                }
+                                .disabled(frequencyPerWeek >= 7)
+                            }
+                        }
+                        .padding(16)
+                        .glassCard()
+                    }
                 }
             }
             .padding(20)
@@ -519,7 +543,7 @@ struct AddHabitWizardView: View {
                 } label: {
                     Image(systemName: "minus.circle.fill")
                         .font(.title2)
-                        .foregroundColor(value.wrappedValue > 0 ? selectedColor.color : .gray.opacity(0.3))
+                        .foregroundColor(value.wrappedValue > 0 ? effectiveColor : .gray.opacity(0.3))
                 }
                 .disabled(value.wrappedValue <= 0)
 
@@ -528,7 +552,7 @@ struct AddHabitWizardView: View {
                 } label: {
                     Image(systemName: "plus.circle.fill")
                         .font(.title2)
-                        .foregroundColor(selectedColor.color)
+                        .foregroundColor(effectiveColor)
                 }
             }
         }
@@ -570,7 +594,7 @@ struct AddHabitWizardView: View {
                     } label: {
                         Image(systemName: "minus.circle.fill")
                             .font(.title2)
-                            .foregroundColor(increment > incrementStep ? selectedColor.color : .gray.opacity(0.3))
+                            .foregroundColor(increment > incrementStep ? effectiveColor : .gray.opacity(0.3))
                     }
                     .disabled(increment <= incrementStep)
 
@@ -579,7 +603,7 @@ struct AddHabitWizardView: View {
                     } label: {
                         Image(systemName: "plus.circle.fill")
                             .font(.title2)
-                            .foregroundColor(selectedColor.color)
+                            .foregroundColor(effectiveColor)
                     }
                 }
             }
@@ -633,10 +657,10 @@ struct AddHabitWizardView: View {
                 VStack(spacing: 16) {
                     Image(systemName: selectedIcon)
                         .font(.system(size: 36))
-                        .foregroundColor(selectedColor.color)
+                        .foregroundColor(effectiveColor)
                         .frame(width: 64, height: 64)
                         .background(
-                            selectedColor.color.opacity(0.12),
+                            effectiveColor.opacity(0.12),
                             in: RoundedRectangle(cornerRadius: 18)
                         )
 
@@ -648,12 +672,12 @@ struct AddHabitWizardView: View {
 
                     Text("Your journey has \(milestoneCount) level\(milestoneCount == 1 ? "" : "s")")
                         .font(.headline)
-                        .foregroundColor(selectedColor.color)
+                        .foregroundColor(effectiveColor)
 
                     // Milestone preview
                     JourneyTimelineView(
                         journeyConfig: config,
-                        accentColor: selectedColor.color
+                        accentColor: effectiveColor
                     )
                     .padding(.vertical, 8)
 
@@ -706,20 +730,22 @@ struct AddHabitWizardView: View {
 
     private func wizardTypeOption(title: String, subtitle: String, icon: String, isSelected: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            VStack(spacing: 6) {
-                Image(systemName: isSelected ? "\(icon).fill" : icon)
-                    .font(.title2)
-                Text(title)
-                    .font(.subheadline.weight(.semibold))
+            VStack(spacing: 4) {
+                HStack(spacing: 6) {
+                    Image(systemName: isSelected ? "\(icon).fill" : icon)
+                        .font(.subheadline)
+                    Text(title)
+                        .font(.subheadline.weight(.semibold))
+                }
                 Text(subtitle)
                     .font(.caption2)
                     .foregroundColor(isSelected ? .white.opacity(0.7) : .secondary)
             }
-            .foregroundColor(isSelected ? .white : selectedColor.color)
+            .foregroundColor(isSelected ? .white : effectiveColor)
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 16)
+            .padding(.vertical, 14)
             .background(
-                isSelected ? selectedColor.color : selectedColor.color.opacity(0.10),
+                isSelected ? effectiveColor : effectiveColor.opacity(0.10),
                 in: RoundedRectangle(cornerRadius: 14)
             )
         }
@@ -825,6 +851,9 @@ struct AddHabitWizardView: View {
                 journeyConfig: config,
                 isInverse: isInverse
             )
+            if isCustomColor {
+                habit.customColorHex = customColor.toHex()
+            }
             modelContext.insert(habit)
             dismiss()
         }

@@ -219,10 +219,10 @@ struct HabitDetailView: View {
 
             Image(systemName: habit.icon)
                 .font(.system(size: 44))
-                .foregroundColor(habit.accentColor.color)
+                .foregroundColor(habit.displayColor)
                 .frame(width: 80, height: 80)
                 .background(
-                    habit.accentColor.color.opacity(0.12),
+                    habit.displayColor.opacity(0.12),
                     in: RoundedRectangle(cornerRadius: 24)
                 )
 
@@ -245,9 +245,9 @@ struct HabitDetailView: View {
                 GeometryReader { geo in
                     ZStack(alignment: .leading) {
                         RoundedRectangle(cornerRadius: 8)
-                            .fill(habit.accentColor.color.opacity(0.15))
+                            .fill(habit.displayColor.opacity(0.15))
                         RoundedRectangle(cornerRadius: 8)
-                            .fill(habit.accentColor.color)
+                            .fill(habit.displayColor)
                             .frame(width: geo.size.width * progress)
                     }
                 }
@@ -275,7 +275,7 @@ struct HabitDetailView: View {
         VStack(spacing: 8) {
             HStack(spacing: 12) {
                 statCard(title: "Streak",  value: "\(habit.currentStreak)", unit: "weeks",     icon: "flame.fill",                     color: .justWarning)
-                statCard(title: "Total",   value: "\(habit.totalCompletions)", unit: "days",   icon: "calendar",                       color: habit.accentColor.color)
+                statCard(title: "Total",   value: "\(habit.totalCompletions)", unit: "days",   icon: "calendar",                       color: habit.displayColor)
                 statCard(title: "Rate",    value: "\(Int(habit.weeklyProgress() * 100))%", unit: "this week", icon: "chart.line.uptrend.xyaxis", color: .justSuccess)
             }
 
@@ -328,7 +328,7 @@ struct HabitDetailView: View {
 
                 JourneyTimelineView(
                     journeyConfig: config,
-                    accentColor: habit.accentColor.color
+                    accentColor: habit.displayColor
                 )
 
                 if config.isAtFinalLevel {
@@ -387,7 +387,16 @@ struct HabitDetailView: View {
 
     // MARK: - Log Today
 
+    @ViewBuilder
     private var logTodayButton: some View {
+        if habit.isInverse {
+            inverseLogTodayButton
+        } else {
+            standardLogTodayButton
+        }
+    }
+
+    private var standardLogTodayButton: some View {
         let done = habit.isCompleted(on: Date())
 
         return Button {
@@ -410,15 +419,106 @@ struct HabitDetailView: View {
                     .font(.headline)
                     .contentTransition(.interpolate)
             }
-            .foregroundColor(done ? .white : habit.accentColor.color)
+            .foregroundColor(done ? .white : habit.displayColor)
             .frame(maxWidth: .infinity)
             .frame(height: 54)
             .background(
-                habit.accentColor.color.opacity(done ? 1.0 : 0.12),
+                habit.displayColor.opacity(done ? 1.0 : 0.12),
                 in: RoundedRectangle(cornerRadius: 16)
             )
         }
         .animation(.easeInOut(duration: 0.25), value: done)
+    }
+
+    @ViewBuilder
+    private var inverseLogTodayButton: some View {
+        let affirmed = habit.isAffirmed(on: Date())
+        let slipped = !habit.isCompleted(on: Date()) // isCompleted inverts for inverse
+
+        if affirmed {
+            // Affirmed state
+            Button {
+                withAnimation(.easeInOut(duration: 0.25)) {
+                    habit.undoAffirmAndReloadWidget(on: Date())
+                }
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            } label: {
+                HStack(spacing: 10) {
+                    Image(systemName: "checkmark.shield.fill")
+                        .font(.title3)
+                        .contentTransition(.symbolEffect(.replace))
+                    Text("Holding strong!")
+                        .font(.headline)
+                        .contentTransition(.interpolate)
+                }
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .frame(height: 54)
+                .background(Color.justSuccess, in: RoundedRectangle(cornerRadius: 16))
+            }
+            .animation(.easeInOut(duration: 0.25), value: affirmed)
+        } else if slipped {
+            // Slipped state
+            Button {
+                withAnimation(.easeInOut(duration: 0.25)) {
+                    habit.undoSlipAndReloadWidget(on: Date())
+                }
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            } label: {
+                HStack(spacing: 10) {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.title3)
+                        .contentTransition(.symbolEffect(.replace))
+                    Text("Slipped today")
+                        .font(.headline)
+                        .contentTransition(.interpolate)
+                }
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .frame(height: 54)
+                .background(Color.justWarning, in: RoundedRectangle(cornerRadius: 16))
+            }
+            .animation(.easeInOut(duration: 0.25), value: slipped)
+        } else {
+            // Not interacted — dual buttons
+            HStack(spacing: 12) {
+                Button {
+                    withAnimation(.easeInOut(duration: 0.25)) {
+                        habit.affirmDayAndReloadWidget(on: Date())
+                    }
+                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "checkmark.shield.fill")
+                            .font(.title3)
+                        Text("I held strong!")
+                            .font(.headline)
+                    }
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 54)
+                    .background(Color.justSuccess, in: RoundedRectangle(cornerRadius: 16))
+                }
+
+                Button {
+                    withAnimation(.easeInOut(duration: 0.25)) {
+                        habit.logSlipAndReloadWidget(on: Date())
+                    }
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "xmark.circle")
+                            .font(.title3)
+                        Text("I slipped")
+                            .font(.headline)
+                    }
+                    .foregroundColor(.justWarning)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 54)
+                    .background(Color.justWarning.opacity(0.12), in: RoundedRectangle(cornerRadius: 16))
+                }
+            }
+        }
     }
 
     // MARK: - Contribution Graph

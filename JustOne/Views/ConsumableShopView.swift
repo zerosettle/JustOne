@@ -14,14 +14,15 @@ struct ConsumableShopView: View {
     @Environment(AuthViewModel.self) var authVM
     @Environment(\.dismiss) var dismiss
 
-    var onWebCheckout: ((ZSProduct) -> Void)?
-
     @State private var errorMessage: String?
+    @State private var webCheckoutProduct: ZSProduct?
+    @State private var isLoadingWebCheckout = false
     @State private var selection: ShopSelection? = .consumable(.streakSaver1)
 
     // Footer collapse/expand (Safari-style)
     @State private var isFooterExpanded = true
     @State private var scrollAccumulator: CGFloat = 0
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         NavigationStack {
@@ -32,7 +33,7 @@ struct ConsumableShopView: View {
                     VStack(spacing: 32) {
                         streakSaverSection
 
-                        if !iapManager.isAtHighestTier {
+                        if !iapManager.isPremium {
                             subscriptionSection
                         }
 
@@ -80,6 +81,22 @@ struct ConsumableShopView: View {
                     }
                 }
             }
+            .checkoutSheet(
+                item: $webCheckoutProduct,
+                userId: authVM.appleUserID ?? "",
+                preload: .all,
+                onPresent: { isLoadingWebCheckout = false }
+            ) {
+                if let product = webCheckoutProduct {
+                    CheckoutSheetHeader(product: product)
+                }
+            } onComplete: { result in
+                isLoadingWebCheckout = false
+                Task {
+                    let error = await iapManager.processWebCheckout(result, userId: authVM.appleUserID)
+                    if let error { errorMessage = error }
+                }
+            }
             .alert("Purchase Error", isPresented: Binding(
                 get: { errorMessage != nil },
                 set: { if !$0 { errorMessage = nil } }
@@ -87,6 +104,9 @@ struct ConsumableShopView: View {
                 Button("OK", role: .cancel) {}
             } message: {
                 Text(errorMessage ?? "")
+            }
+            .onChange(of: scenePhase) { _, phase in
+                if phase != .active { isLoadingWebCheckout = false }
             }
         }
     }
@@ -380,7 +400,7 @@ struct ConsumableShopView: View {
                         case .subscription(let tier):
                             _ = try await iapManager.purchaseSubscription(tier, userId: authVM.appleUserID)
                         }
-                    } catch {
+                    } catch where !ZeroSettleManager.isCancellation(error) {
                         errorMessage = error.localizedDescription
                     }
                 }
@@ -418,35 +438,43 @@ struct ConsumableShopView: View {
             // Pay Direct button (only when web price exists)
             if let webPrice = zsProduct?.webPrice?.formatted {
                 Button {
-                    if let zsProduct { onWebCheckout?(zsProduct) }
+                    if let zsProduct {
+                        isLoadingWebCheckout = true
+                        webCheckoutProduct = zsProduct
+                    }
                 } label: {
                     VStack(spacing: 4) {
-                        HStack(spacing: 6) {
-                            Image(systemName: "creditcard.fill")
-                                .font(.subheadline)
-                            Text("Pay Direct")
-                                .font(.subheadline)
-                                .fontWeight(.semibold)
-                        }
-
-                        HStack(spacing: 6) {
-                            Text(webPrice)
-                                .font(.caption)
-                                .fontWeight(.medium)
-
-                            if let savings = zsProduct?.savingsPercent, savings > 0 {
-                                Text("Save \(savings)%")
-                                    .font(.caption2)
-                                    .fontWeight(.bold)
-                                    .padding(.horizontal, 5)
-                                    .padding(.vertical, 1)
-                                    .background(
-                                        Capsule()
-                                            .fill(.white.opacity(0.25))
-                                    )
+                        if isLoadingWebCheckout {
+                            ProgressView()
+                                .tint(.white)
+                        } else {
+                            HStack(spacing: 6) {
+                                Image(systemName: "creditcard.fill")
+                                    .font(.subheadline)
+                                Text("Pay Direct")
+                                    .font(.subheadline)
+                                    .fontWeight(.semibold)
                             }
+
+                            HStack(spacing: 6) {
+                                Text(webPrice)
+                                    .font(.caption)
+                                    .fontWeight(.medium)
+
+                                if let savings = zsProduct?.savingsPercent, savings > 0 {
+                                    Text("Save \(savings)%")
+                                        .font(.caption2)
+                                        .fontWeight(.bold)
+                                        .padding(.horizontal, 5)
+                                        .padding(.vertical, 1)
+                                        .background(
+                                            Capsule()
+                                                .fill(.white.opacity(0.25))
+                                        )
+                                }
+                            }
+                            .opacity(0.9)
                         }
-                        .opacity(0.9)
                     }
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
@@ -464,9 +492,9 @@ struct ConsumableShopView: View {
                                 )
                             )
                     )
-                    .opacity(iapManager.isPurchasing ? 0.5 : 1.0)
+                    .opacity(iapManager.isPurchasing || isLoadingWebCheckout ? 0.7 : 1.0)
                 }
-                .disabled(iapManager.isPurchasing)
+                .disabled(iapManager.isPurchasing || isLoadingWebCheckout)
             }
         }
     }

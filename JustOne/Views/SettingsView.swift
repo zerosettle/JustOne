@@ -24,6 +24,7 @@ struct SettingsView: View {
     @State private var isUpgradeAvailable = false
     @State private var showCancelFlow = false
     @State private var showFallbackCancel = false
+    @State private var pendingStoreKitTier: SubscriptionTier?
     @State private var webCheckoutProduct: ZSProduct?
     @State private var reminderEnabled = NotificationManager.isReminderEnabled
     @State private var reminderTime = {
@@ -109,8 +110,6 @@ struct SettingsView: View {
                         migrationBanner(manager: manager, offer: offer)
                     }
 
-                    migrationTipSection
-
                     subscriptionCard
                     streakSaverCard
                     reminderCard
@@ -122,11 +121,13 @@ struct SettingsView: View {
         }
         .navigationTitle("Account")
         .navigationBarTitleDisplayMode(.inline)
-        .sheet(isPresented: $showPremiumUpsell) {
-            PremiumUpsellView(onWebCheckout: { webCheckoutProduct = $0 })
+        .sheet(isPresented: $showPremiumUpsell, onDismiss: handlePendingStoreKitPurchase) {
+            PremiumUpsellView(onStoreKitCheckout: { tier in
+                pendingStoreKitTier = tier
+            })
         }
         .fullScreenCover(isPresented: $showConsumableShop) {
-            ConsumableShopView(onWebCheckout: { webCheckoutProduct = $0 })
+            ConsumableShopView()
         }
         .alert("Purchases Restored", isPresented: $showRestoreConfirmation) {
             Button("OK", role: .cancel) {}
@@ -137,10 +138,7 @@ struct SettingsView: View {
             item: $webCheckoutProduct,
             userId: authVM.appleUserID ?? "",
             freeTrialDays: ZeroSettle.shared.migrationManager?.offerData?.freeTrialDays ?? 0,
-            preload: .all,
-            onPresent: {
-                showPremiumUpsell = false
-            }
+            preload: .all
         ) {
             if let product = webCheckoutProduct {
                 CheckoutSheetHeader(product: product)
@@ -152,7 +150,7 @@ struct SettingsView: View {
                 if case .success = result,
                    let manager = ZeroSettle.shared.migrationManager,
                    manager.state == .presented {
-                    manager.markCheckoutSucceeded()
+                    await manager.markCheckoutSucceeded()
                     await manager.showAppleSubscriptionManagement()
                 }
             }
@@ -297,7 +295,7 @@ struct SettingsView: View {
                     HStack(spacing: 12) {
                         Image(systemName: habit.icon)
                             .font(.caption)
-                            .foregroundColor(habit.accentColor.color)
+                            .foregroundColor(habit.displayColor)
                             .frame(width: 24, height: 24)
 
                         Text(habit.name)
@@ -381,23 +379,6 @@ struct SettingsView: View {
         }
         .padding(20)
         .glassCard()
-    }
-
-    // MARK: - Migration Tip (SDK built-in view)
-
-    private var migrationTipSection: some View {
-        MigrationTipView(
-            userId: authVM.appleUserID ?? "",
-            backgroundColor: Color(.secondarySystemGroupedBackground),
-            onEvent: { event in
-                switch event {
-                case .migrationCompleted:
-                    Task { await iapManager.syncWithSDK(userId: authVM.appleUserID ?? "") }
-                default:
-                    break
-                }
-            }
-        )
     }
 
     // MARK: - Subscription Card
@@ -639,7 +620,7 @@ struct SettingsView: View {
                     do {
                         try await iapManager.restorePurchases(userId: authVM.appleUserID)
                         showRestoreConfirmation = true
-                    } catch {
+                    } catch where !ZeroSettleManager.isCancellation(error) {
                         errorMessage = error.localizedDescription
                     }
                 }
@@ -702,6 +683,18 @@ struct SettingsView: View {
             await iapManager.syncWithSDK(userId: userId)
         } catch {
             errorMessage = "Failed to cancel: \(error.localizedDescription)"
+        }
+    }
+
+    private func handlePendingStoreKitPurchase() {
+        guard let tier = pendingStoreKitTier else { return }
+        pendingStoreKitTier = nil
+        Task {
+            do {
+                _ = try await iapManager.purchaseSubscription(tier, userId: authVM.appleUserID)
+            } catch where !ZeroSettleManager.isCancellation(error) {
+                errorMessage = error.localizedDescription
+            }
         }
     }
 

@@ -48,6 +48,7 @@ class Habit {
     var accentColor: HabitAccentColor
     var frequencyPerWeek: Int
     var completedDates: [String]
+    var affirmedDates: [String] = []
     var createdAt: Date
     var journeyConfig: JourneyConfig?        // nil for standard habits
     var pausedJourneyConfig: JourneyConfig?  // stashed config when converting dynamic → standard
@@ -58,7 +59,19 @@ class Habit {
     /// `completedDates` stores dates the user *slipped*, and `isCompleted(on:)` inverts.
     var isInverse: Bool = false
 
+    /// Hex color string for user-picked custom colors. When set, takes priority over `accentColor`.
+    var customColorHex: String?
+
+    /// The resolved display color — custom hex if set, otherwise the preset accent color.
+    var displayColor: Color {
+        if let hex = customColorHex {
+            return Color(hex: hex)
+        }
+        return accentColor.color
+    }
+
     @Transient private var _completedDatesSet: Set<String>?
+    @Transient private var _affirmedDatesSet: Set<String>?
 
     init(
         id: UUID = UUID(),
@@ -109,6 +122,21 @@ class Habit {
 
     func invalidateCompletedDatesCache() {
         _completedDatesSet = nil
+    }
+
+    private func affirmedDatesSet() -> Set<String> {
+        if let cached = _affirmedDatesSet { return cached }
+        let set = Set(affirmedDates)
+        _affirmedDatesSet = set
+        return set
+    }
+
+    func invalidateAffirmedDatesCache() {
+        _affirmedDatesSet = nil
+    }
+
+    func isAffirmed(on date: Date) -> Bool {
+        affirmedDatesSet().contains(Self.dateKey(for: date))
     }
 
     func isCompleted(on date: Date) -> Bool {
@@ -182,6 +210,52 @@ class Habit {
         invalidateCompletedDatesCache()
     }
 
+    // MARK: - Inverse Habit Actions
+
+    /// Affirm a day (user resisted temptation). Removes slip if present.
+    func affirmDay(on date: Date) {
+        let key = Self.dateKey(for: date)
+        if !affirmedDates.contains(key) {
+            affirmedDates.append(key)
+        }
+        if let index = completedDates.firstIndex(of: key) {
+            completedDates.remove(at: index)
+        }
+        invalidateCompletedDatesCache()
+        invalidateAffirmedDatesCache()
+    }
+
+    /// Log a slip (user gave in). Removes affirm if present.
+    func logSlip(on date: Date) {
+        let key = Self.dateKey(for: date)
+        if !completedDates.contains(key) {
+            completedDates.append(key)
+        }
+        if let index = affirmedDates.firstIndex(of: key) {
+            affirmedDates.remove(at: index)
+        }
+        invalidateCompletedDatesCache()
+        invalidateAffirmedDatesCache()
+    }
+
+    /// Undo an affirm.
+    func undoAffirm(on date: Date) {
+        let key = Self.dateKey(for: date)
+        if let index = affirmedDates.firstIndex(of: key) {
+            affirmedDates.remove(at: index)
+        }
+        invalidateAffirmedDatesCache()
+    }
+
+    /// Undo a slip (remove from completedDates).
+    func undoSlip(on date: Date) {
+        let key = Self.dateKey(for: date)
+        if let index = completedDates.firstIndex(of: key) {
+            completedDates.remove(at: index)
+        }
+        invalidateCompletedDatesCache()
+    }
+
     // MARK: - Journey Methods
 
     /// Check if the user qualifies for a level-up on a journey habit.
@@ -231,14 +305,14 @@ class Habit {
 
     // MARK: - Habit Type Conversion
 
-    /// Convert from dynamic journey → standard. Stashes the config so it can be restored.
+    /// Convert from progressive journey → standard. Stashes the config so it can be restored.
     func convertToStandard() {
         guard let config = journeyConfig else { return }
         pausedJourneyConfig = config
         journeyConfig = nil
     }
 
-    /// Convert from standard → dynamic journey. Restores stashed config if available.
+    /// Convert from standard → progressive journey. Restores stashed config if available.
     func convertToJourney(with config: JourneyConfig? = nil) {
         if let config = config {
             journeyConfig = config

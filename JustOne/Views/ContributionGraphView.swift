@@ -75,7 +75,7 @@ struct ContributionGraphView: View {
                                 dayCellView(for: date)
                                     .overlay(
                                         RoundedRectangle(cornerRadius: 3)
-                                            .fill(habit.accentColor.color.opacity(glow * 0.6))
+                                            .fill(habit.displayColor.opacity(glow * 0.6))
                                     )
                                     .onTapGesture { onDayTapped?(date) }
                             }
@@ -149,13 +149,24 @@ struct ContributionGraphView: View {
 
     private func cellColor(isCompleted: Bool, isFuture: Bool, weekProgress: Double, date: Date) -> Color {
         if isFuture { return Color.gray.opacity(colorScheme == .dark ? 0.12 : 0.06) }
+        if habit.isInverse {
+            let slipped = !isCompleted  // isCompleted inverts for inverse
+            let affirmed = habit.isAffirmed(on: date)
+            if affirmed {
+                return Color.justSuccess               // bright green — actively checked in
+            } else if slipped {
+                return Color.justWarning.opacity(0.7)  // warning — slipped
+            } else {
+                return Color.justSuccess.opacity(0.25) // dim — passive clean day
+            }
+        }
         if isCompleted {
             if let config = habit.journeyConfig {
                 let levelIntensity = config.levelIntensity(on: Habit.dateKey(for: date))
-                return habit.accentColor.color.opacity(0.4 + levelIntensity * 0.6)
+                return habit.displayColor.opacity(0.4 + levelIntensity * 0.6)
             }
             let intensity = 0.35 + (weekProgress * 0.65)
-            return habit.accentColor.color.opacity(intensity)
+            return habit.displayColor.opacity(intensity)
         }
         return Color.gray.opacity(colorScheme == .dark ? 0.20 : 0.10)
     }
@@ -209,6 +220,6 @@ struct ContributionGraphView: View {
         if level == 0 {
             return Color.gray.opacity(colorScheme == .dark ? 0.20 : 0.10)
         }
-        return habit.accentColor.color.opacity(0.35 + level * 0.65)
+        return habit.displayColor.opacity(0.35 + level * 0.65)
     }
 }

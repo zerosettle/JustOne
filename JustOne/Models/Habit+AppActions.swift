@@ -27,4 +27,28 @@ extension Habit {
         toggleCompletion(on: date)
         WidgetCenter.shared.reloadAllTimelines()
     }
+
+    /// Affirm day (inverse habit) and tell WidgetKit to refresh.
+    func affirmDayAndReloadWidget(on date: Date) {
+        affirmDay(on: date)
+        WidgetCenter.shared.reloadAllTimelines()
+    }
+
+    /// Log slip (inverse habit) and tell WidgetKit to refresh.
+    func logSlipAndReloadWidget(on date: Date) {
+        logSlip(on: date)
+        WidgetCenter.shared.reloadAllTimelines()
+    }
+
+    /// Undo affirm (inverse habit) and tell WidgetKit to refresh.
+    func undoAffirmAndReloadWidget(on date: Date) {
+        undoAffirm(on: date)
+        WidgetCenter.shared.reloadAllTimelines()
+    }
+
+    /// Undo slip (inverse habit) and tell WidgetKit to refresh.
+    func undoSlipAndReloadWidget(on date: Date) {
+        undoSlip(on: date)
+        WidgetCenter.shared.reloadAllTimelines()
+    }
 }

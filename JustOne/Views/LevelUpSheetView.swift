@@ -25,8 +25,8 @@ struct LevelUpSheetView: View {
                     .fill(
                         LinearGradient(
                             colors: [
-                                habit.accentColor.color,
-                                habit.accentColor.color.opacity(0.6)
+                                habit.displayColor,
+                                habit.displayColor.opacity(0.6)
                             ],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
@@ -68,7 +68,7 @@ struct LevelUpSheetView: View {
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
                     .frame(height: 52)
-                    .background(habit.accentColor.color, in: RoundedRectangle(cornerRadius: 14))
+                    .background(habit.displayColor, in: RoundedRectangle(cornerRadius: 14))
             }
 
             // Defer button

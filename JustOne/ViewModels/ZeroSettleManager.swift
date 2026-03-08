@@ -201,9 +201,19 @@ class ZeroSettleManager {
             if let userId { await syncWithSDK(userId: userId) }
             return nil
         case .failure(let error):
-            if let zsError = error as? ZeroSettleError, case .cancelled = zsError { return nil }
+            if Self.isCancellation(error) { return nil }
             return error.localizedDescription
         }
+    }
+
+    /// Returns true for any flavour of user-initiated cancellation.
+    static func isCancellation(_ error: Error) -> Bool {
+        if let zsError = error as? ZeroSettleError, case .cancelled = zsError { return true }
+        if error is CancellationError { return true }
+        if let skError = error as? StoreKitError, case .userCancelled = skError { return true }
+        // PaymentSheetError.cancelled is internal to ZeroSettleKit
+        if error.localizedDescription == "Payment was cancelled" { return true }
+        return false
     }
 
     func restorePurchases(userId: String? = nil) async throws {
@@ -226,6 +236,11 @@ class ZeroSettleManager {
             case .cancelled, .purchasePending: return false
             default: throw error
             }
+        } catch is CancellationError {
+            return false
+        } catch let error as StoreKitError {
+            if case .userCancelled = error { return false }
+            throw error
         }
     }
 }

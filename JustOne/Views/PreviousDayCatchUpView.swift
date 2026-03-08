@@ -94,10 +94,10 @@ private struct CatchUpRow: View {
             HStack(spacing: 14) {
                 Image(systemName: habit.icon)
                     .font(.title3)
-                    .foregroundColor(habit.accentColor.color)
+                    .foregroundColor(habit.displayColor)
                     .frame(width: 40, height: 40)
                     .background(
-                        habit.accentColor.color.opacity(0.15),
+                        habit.displayColor.opacity(0.15),
                         in: RoundedRectangle(cornerRadius: 10)
                     )
 
@@ -109,7 +109,7 @@ private struct CatchUpRow: View {
 
                 Image(systemName: isMarked ? "checkmark.circle.fill" : "circle")
                     .font(.system(size: 24))
-                    .foregroundColor(isMarked ? habit.accentColor.color : .secondary.opacity(0.3))
+                    .foregroundColor(isMarked ? habit.displayColor : .secondary.opacity(0.3))
             }
             .padding(14)
             .glassCard()

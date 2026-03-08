@@ -14,6 +14,7 @@ struct DualPriceButtons: View {
     let onStoreKit: () -> Void
     let onWeb: () -> Void
     var isDisabled: Bool = false
+    var isLoadingWeb: Bool = false
 
     var body: some View {
         HStack(spacing: 8) {
@@ -40,21 +41,27 @@ struct DualPriceButtons: View {
             if let webPrice {
                 Button(action: onWeb) {
                     VStack(spacing: 2) {
-                        Text(webPrice)
-                            .font(.subheadline.weight(.bold))
-                        Text("Web")
-                            .font(.caption2)
-                            .opacity(0.8)
+                        if isLoadingWeb {
+                            ProgressView()
+                                .tint(.white)
+                        } else {
+                            Text(webPrice)
+                                .font(.subheadline.weight(.bold))
+                            Text("Web")
+                                .font(.caption2)
+                                .opacity(0.8)
+                        }
                     }
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 10)
                     .background(LinearGradient.savingsGradient, in: RoundedRectangle(cornerRadius: 12))
+                    .opacity(isLoadingWeb ? 0.7 : 1.0)
                 }
                 .buttonStyle(.plain)
-                .disabled(isDisabled)
+                .disabled(isDisabled || isLoadingWeb)
                 .overlay(alignment: .topTrailing) {
-                    if let savingsPercent, savingsPercent > 0 {
+                    if let savingsPercent, savingsPercent > 0, !isLoadingWeb {
                         Text("Save \(savingsPercent)%")
                             .font(.system(size: 9, weight: .heavy))
                             .foregroundStyle(.white)

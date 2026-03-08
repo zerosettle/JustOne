@@ -53,7 +53,10 @@ struct MediumWidgetView: View {
     }
 
     private func habitRow(_ snapshot: HabitTimelineEntry.HabitSnapshot) -> some View {
-        let accentColor = HabitAccentColor(rawValue: snapshot.entity.accentColorName)?.color ?? .purple
+        let accentColor: Color = {
+            if let hex = snapshot.entity.customColorHex { return Color(hex: hex) }
+            return HabitAccentColor(rawValue: snapshot.entity.accentColorName)?.color ?? .purple
+        }()
 
         return HStack(spacing: 10) {
             // Interactive toggle

@@ -71,16 +71,6 @@ struct ConsumableShopView: View {
                     Button("Done") { dismiss() }
                 }
             }
-            .task {
-                if let userId = authVM.appleUserID {
-                    for tier in SubscriptionTier.allCases {
-                        await CheckoutSheet.warmUp(productId: tier.productId, userId: userId)
-                    }
-                    for product in ConsumableProduct.allCases {
-                        await CheckoutSheet.warmUp(productId: product.productId, userId: userId)
-                    }
-                }
-            }
             .checkoutSheet(
                 item: $webCheckoutProduct,
                 userId: authVM.appleUserID ?? "",

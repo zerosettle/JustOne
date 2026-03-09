@@ -45,9 +45,6 @@ struct JustOneApp: App {
                             AppLogger.iap.error("Bootstrap failed: \(error)")
                         }
                         await iapManager.syncWithSDK(userId: userId)
-                        for product in ZeroSettle.shared.products {
-                            await CheckoutSheet.warmUp(productId: product.id, userId: userId)
-                        }
                     }
                 }
                 .zeroSettleHandler()

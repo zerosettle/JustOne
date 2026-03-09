@@ -14,7 +14,6 @@ struct PremiumUpsellView: View {
     @Environment(AuthViewModel.self) var authVM
     @Environment(\.dismiss) var dismiss
 
-    var onStoreKitCheckout: ((SubscriptionTier) -> Void)?
 
     @State private var selectedTier: SubscriptionTier = .yearly
     @State private var errorMessage: String?
@@ -218,8 +217,14 @@ struct PremiumUpsellView: View {
             webPrice: zsProduct?.webPrice?.formatted,
             savingsPercent: zsProduct?.savingsPercent,
             onStoreKit: {
-                onStoreKitCheckout?(selectedTier)
-                dismiss()
+                Task {
+                    do {
+                        let success = try await iapManager.purchaseSubscription(selectedTier, userId: authVM.appleUserID)
+                        if success { dismiss() }
+                    } catch where !ZeroSettleManager.isCancellation(error) {
+                        errorMessage = error.localizedDescription
+                    }
+                }
             },
             onWeb: {
                 if let zsProduct {

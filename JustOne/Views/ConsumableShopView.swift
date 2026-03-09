@@ -50,7 +50,7 @@ struct ConsumableShopView: View {
                 VStack(spacing: 0) {
                     Spacer()
                     LinearGradient(
-                        colors: [.clear, Color(.systemBackground).opacity(0.6)],
+                        colors: [.clear, Color(.systemBackground).opacity(0.95)],
                         startPoint: .top,
                         endPoint: .bottom
                     )
@@ -367,7 +367,7 @@ struct ConsumableShopView: View {
                     .fill(.regularMaterial)
                     .overlay {
                         RoundedRectangle(cornerRadius: isFooterExpanded ? 28 : 22, style: .continuous)
-                            .fill(Color.justPrimary.opacity(0.15))
+                            .fill(Color.justPrimary.opacity(0.25))
                     }
             }
             .shadow(color: Color.justPrimary.opacity(0.2), radius: 20, y: 0)

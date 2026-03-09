@@ -7,6 +7,7 @@
 //
 
 import Foundation
+import ZeroSettleKit
 
 // MARK: - Billing Provider
 
@@ -29,30 +30,6 @@ enum SubscriptionTier: String, CaseIterable, Identifiable {
         }
     }
 
-    var price: String {
-        switch self {
-        case .weekly:  return "$1.99"
-        case .monthly: return "$4.99"
-        case .yearly:  return "$39.99"
-        }
-    }
-
-    var pricePerWeek: String {
-        switch self {
-        case .weekly:  return "$1.99/wk"
-        case .monthly: return "$1.15/wk"
-        case .yearly:  return "$0.77/wk"
-        }
-    }
-
-    var savings: String? {
-        switch self {
-        case .weekly:  return nil
-        case .monthly: return "Save 42%"
-        case .yearly:  return "Save 61%"
-        }
-    }
-
     var productId: String {
         switch self {
         case .weekly:  return "io.zerosettle.JustOne.premiumWeekly"
@@ -61,41 +38,48 @@ enum SubscriptionTier: String, CaseIterable, Identifiable {
         }
     }
 
+    // MARK: - SDK-Resolved Prices
+
+    /// The ZSProduct from the SDK catalog, if available.
+    private var zsProduct: ZSProduct? {
+        ZeroSettle.shared.product(for: productId)
+    }
+
+    /// Display price resolved from StoreKit catalog, with hardcoded fallback.
+    var price: String {
+        if let formatted = zsProduct?.storeKitPrice?.formatted { return formatted }
+        switch self {
+        case .weekly:  return "$1.99"
+        case .monthly: return "$4.99"
+        case .yearly:  return "$39.99"
+        }
+    }
+
+    /// Price in cents from StoreKit, with hardcoded fallback.
+    var priceCents: Int {
+        if let cents = zsProduct?.storeKitPrice?.amountCents { return cents }
+        switch self {
+        case .weekly:  return 199
+        case .monthly: return 499
+        case .yearly:  return 3999
+        }
+    }
+
+    /// Per-month price string computed from the billing interval and actual price.
+    var pricePerMonth: String {
+        let cents = priceCents
+        let monthly: Double
+        switch self {
+        case .weekly:  monthly = Double(cents) * 52.0 / 12.0 / 100.0
+        case .monthly: monthly = Double(cents) / 100.0
+        case .yearly:  monthly = Double(cents) / 12.0 / 100.0
+        }
+        return String(format: "$%.2f/mo", monthly)
+    }
+
     // MARK: - Paywall & Billing Helpers
 
     static let paywallTiers: [SubscriptionTier] = [.weekly, .monthly, .yearly]
-
-    var numericPrice: Double {
-        switch self {
-        case .weekly:  return 1.99
-        case .monthly: return 4.99
-        case .yearly:  return 39.99
-        }
-    }
-
-    var pricePerMonth: String {
-        switch self {
-        case .weekly:  return String(format: "$%.2f/mo", numericPrice * (52.0 / 12.0))
-        case .monthly: return "$4.99/mo"
-        case .yearly:  return String(format: "$%.2f/mo", numericPrice / 12.0)
-        }
-    }
-
-    var annualSavingsVsMonthly: String {
-        let monthlyCostPerYear = SubscriptionTier.monthly.numericPrice * 12
-        let thisCostPerYear: Double
-        switch self {
-        case .weekly:  thisCostPerYear = numericPrice * 52
-        case .monthly: thisCostPerYear = numericPrice * 12
-        case .yearly:  thisCostPerYear = numericPrice
-        }
-        let savings = monthlyCostPerYear - thisCostPerYear
-        return String(format: "$%.2f", savings)
-    }
-
-    var directBillingPrice: String {
-        String(format: "$%.2f", numericPrice * 0.80)
-    }
 
     var bestValue: Bool { self == .yearly }
 
@@ -131,6 +115,9 @@ enum ConsumableProduct: String, CaseIterable, Identifiable {
     }
 
     var price: String {
+        if let formatted = ZeroSettle.shared.product(for: productId)?.storeKitPrice?.formatted {
+            return formatted
+        }
         switch self {
         case .streakSaver1: return "$0.99"
         case .streakSaver5: return "$3.99"

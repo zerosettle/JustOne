@@ -9,7 +9,9 @@
 	<key>com.apple.developer.associated-domains</key>
 	<array>
 		<string>applinks:api.zerosettle.io?mode=developer</string>
+		<string>applinks:zerosettle.io?mode=developer</string>
 		<string>applinks:api.zerosettle.ngrok.app?mode=developer</string>
+		<string>applinks:landing.zerosettle.ngrok.app?mode=developer</string>
 	</array>
 	<key>com.apple.security.application-groups</key>
 	<array>

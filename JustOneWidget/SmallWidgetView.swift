@@ -53,10 +53,7 @@ struct SmallWidgetView: View {
     }
 
     private func habitRow(_ snapshot: HabitTimelineEntry.HabitSnapshot) -> some View {
-        let accentColor: Color = {
-            if let hex = snapshot.entity.customColorHex { return Color(hex: hex) }
-            return HabitAccentColor(rawValue: snapshot.entity.accentColorName)?.color ?? .purple
-        }()
+        let accentColor = snapshot.entity.displayColor
 
         return HStack(spacing: 8) {
             Button(intent: ToggleHabitIntent(habitID: snapshot.id)) {

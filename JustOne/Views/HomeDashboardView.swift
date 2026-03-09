@@ -40,7 +40,6 @@ struct HomeDashboardView: View {
     @State private var statsSheetMode: StatsSheetMode?
     @State private var showArchived = false
     @State private var showPreviousDayCatchUp = false
-    @State private var pendingStoreKitTier: SubscriptionTier?
     @Environment(\.scenePhase) private var scenePhase
 
     private let heatmapCellSpacing: CGFloat = 3
@@ -189,10 +188,8 @@ struct HomeDashboardView: View {
                         }
                 }
             }
-            .sheet(isPresented: $showPremiumUpsell, onDismiss: handlePendingStoreKitPurchase) {
-                PremiumUpsellView(onStoreKitCheckout: { tier in
-                    pendingStoreKitTier = tier
-                })
+            .sheet(isPresented: $showPremiumUpsell) {
+                PremiumUpsellView()
             }
             .sheet(item: $statsSheetMode) { mode in
                 StatsSheetView(mode: mode, habits: habits)
@@ -896,18 +893,6 @@ struct HomeDashboardView: View {
             let hadIncomplete = activeHabits.contains { !$0.isCompleted(on: yesterday) }
             if hadIncomplete {
                 showPreviousDayCatchUp = true
-            }
-        }
-    }
-
-    private func handlePendingStoreKitPurchase() {
-        guard let tier = pendingStoreKitTier else { return }
-        pendingStoreKitTier = nil
-        Task {
-            do {
-                _ = try await iapManager.purchaseSubscription(tier, userId: authVM.appleUserID)
-            } catch where !ZeroSettleManager.isCancellation(error) {
-                // StoreKit purchase errors are surfaced by the system dialog
             }
         }
     }

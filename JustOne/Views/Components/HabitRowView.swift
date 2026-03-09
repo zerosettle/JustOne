@@ -107,19 +107,19 @@ struct HabitRowView: View {
             }
             .buttonStyle(.borderless)
         } else {
-            // Not interacted — show two stacked buttons
-            VStack(spacing: 4) {
-                Button { onAffirmToday?() } label: {
-                    Image(systemName: "checkmark.shield.fill")
-                        .font(.system(size: 20))
-                        .foregroundColor(.justSuccess)
+            // Not interacted — show side-by-side buttons
+            HStack(spacing: 8) {
+                Button { onSlipToday?() } label: {
+                    Image(systemName: "xmark.circle")
+                        .font(.system(size: 22))
+                        .foregroundColor(.secondary.opacity(0.4))
                 }
                 .buttonStyle(.borderless)
 
-                Button { onSlipToday?() } label: {
-                    Image(systemName: "xmark.circle")
-                        .font(.system(size: 16))
-                        .foregroundColor(.secondary.opacity(0.4))
+                Button { onAffirmToday?() } label: {
+                    Image(systemName: "checkmark.shield.fill")
+                        .font(.system(size: 22))
+                        .foregroundColor(.justSuccess)
                 }
                 .buttonStyle(.borderless)
             }

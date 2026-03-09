@@ -8,6 +8,7 @@
 
 import AppIntents
 import SwiftData
+import SwiftUI
 
 struct HabitEntity: AppEntity {
     static var typeDisplayRepresentation = TypeDisplayRepresentation(name: "Habit")
@@ -18,6 +19,11 @@ struct HabitEntity: AppEntity {
     var icon: String
     var accentColorName: String // raw value of HabitAccentColor
     var customColorHex: String?
+
+    var displayColor: Color {
+        if let hex = customColorHex { return Color(hex: hex) }
+        return HabitAccentColor(rawValue: accentColorName)?.color ?? .purple
+    }
 
     var displayRepresentation: DisplayRepresentation {
         DisplayRepresentation(title: "\(name)", image: .init(systemName: icon))

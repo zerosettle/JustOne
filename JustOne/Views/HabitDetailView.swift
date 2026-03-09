@@ -397,15 +397,16 @@ struct HabitDetailView: View {
     }
 
     private var standardLogTodayButton: some View {
-        let done = habit.isCompleted(on: Date())
+        let today = Date()
+        let done = habit.isCompleted(on: today)
 
         return Button {
             withAnimation(.easeInOut(duration: 0.25)) {
-                habit.toggleCompletionAndReloadWidget(on: Date())
+                habit.toggleCompletionAndReloadWidget(on: today)
             }
-            UIImpactFeedbackGenerator(style: habit.isCompleted(on: Date()) ? .medium : .light).impactOccurred()
+            UIImpactFeedbackGenerator(style: habit.isCompleted(on: today) ? .medium : .light).impactOccurred()
             // Check for level-up after completing (not uncompleting)
-            if habit.isCompleted(on: Date()) && habit.qualifiesForLevelUp() {
+            if habit.isCompleted(on: today) && habit.qualifiesForLevelUp() {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                     showLevelUp = true
                 }
@@ -432,14 +433,15 @@ struct HabitDetailView: View {
 
     @ViewBuilder
     private var inverseLogTodayButton: some View {
-        let affirmed = habit.isAffirmed(on: Date())
-        let slipped = !habit.isCompleted(on: Date()) // isCompleted inverts for inverse
+        let today = Date()
+        let affirmed = habit.isAffirmed(on: today)
+        let slipped = !habit.isCompleted(on: today) // isCompleted inverts for inverse
 
         if affirmed {
             // Affirmed state
             Button {
                 withAnimation(.easeInOut(duration: 0.25)) {
-                    habit.undoAffirmAndReloadWidget(on: Date())
+                    habit.undoAffirmAndReloadWidget(on: today)
                 }
                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
             } label: {
@@ -461,7 +463,7 @@ struct HabitDetailView: View {
             // Slipped state
             Button {
                 withAnimation(.easeInOut(duration: 0.25)) {
-                    habit.undoSlipAndReloadWidget(on: Date())
+                    habit.undoSlipAndReloadWidget(on: today)
                 }
                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
             } label: {
@@ -484,7 +486,7 @@ struct HabitDetailView: View {
             HStack(spacing: 12) {
                 Button {
                     withAnimation(.easeInOut(duration: 0.25)) {
-                        habit.affirmDayAndReloadWidget(on: Date())
+                        habit.affirmDayAndReloadWidget(on: today)
                     }
                     UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                 } label: {
@@ -502,7 +504,7 @@ struct HabitDetailView: View {
 
                 Button {
                     withAnimation(.easeInOut(duration: 0.25)) {
-                        habit.logSlipAndReloadWidget(on: Date())
+                        habit.logSlipAndReloadWidget(on: today)
                     }
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
                 } label: {

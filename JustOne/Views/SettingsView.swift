@@ -24,8 +24,8 @@ struct SettingsView: View {
     @State private var isUpgradeAvailable = false
     @State private var showCancelFlow = false
     @State private var showFallbackCancel = false
-    @State private var pendingStoreKitTier: SubscriptionTier?
     @State private var webCheckoutProduct: ZSProduct?
+    @State private var isMigrationLoading = false
     @State private var reminderEnabled = NotificationManager.isReminderEnabled
     @State private var reminderTime = {
         let comps = NotificationManager.reminderTimeComponents
@@ -121,10 +121,8 @@ struct SettingsView: View {
         }
         .navigationTitle("Account")
         .navigationBarTitleDisplayMode(.inline)
-        .sheet(isPresented: $showPremiumUpsell, onDismiss: handlePendingStoreKitPurchase) {
-            PremiumUpsellView(onStoreKitCheckout: { tier in
-                pendingStoreKitTier = tier
-            })
+        .sheet(isPresented: $showPremiumUpsell) {
+            PremiumUpsellView()
         }
         .fullScreenCover(isPresented: $showConsumableShop) {
             ConsumableShopView()
@@ -144,6 +142,7 @@ struct SettingsView: View {
                 CheckoutSheetHeader(product: product)
             }
         } onComplete: { result in
+            isMigrationLoading = false
             Task {
                 errorMessage = await iapManager.processWebCheckout(result, userId: authVM.appleUserID)
                 // If this was a migration checkout, track the conversion
@@ -355,18 +354,29 @@ struct SettingsView: View {
             }
 
             Button {
+                isMigrationLoading = true
                 manager.present()
                 if let product = ZeroSettle.shared.product(for: offer.prompt.productId) {
                     webCheckoutProduct = product
+                } else {
+                    isMigrationLoading = false
                 }
             } label: {
-                Text(offer.prompt.ctaText)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 44)
-                    .background(LinearGradient.savingsGradient, in: RoundedRectangle(cornerRadius: 12))
+                Group {
+                    if isMigrationLoading {
+                        ProgressView()
+                            .tint(.white)
+                    } else {
+                        Text(offer.prompt.ctaText)
+                    }
+                }
+                .font(.subheadline.weight(.semibold))
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .frame(height: 44)
+                .background(LinearGradient.savingsGradient, in: RoundedRectangle(cornerRadius: 12))
             }
+            .disabled(isMigrationLoading)
 
             Button {
                 manager.dismiss()
@@ -683,18 +693,6 @@ struct SettingsView: View {
             await iapManager.syncWithSDK(userId: userId)
         } catch {
             errorMessage = "Failed to cancel: \(error.localizedDescription)"
-        }
-    }
-
-    private func handlePendingStoreKitPurchase() {
-        guard let tier = pendingStoreKitTier else { return }
-        pendingStoreKitTier = nil
-        Task {
-            do {
-                _ = try await iapManager.purchaseSubscription(tier, userId: authVM.appleUserID)
-            } catch where !ZeroSettleManager.isCancellation(error) {
-                errorMessage = error.localizedDescription
-            }
         }
     }
 

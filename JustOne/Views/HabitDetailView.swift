@@ -183,7 +183,11 @@ struct HabitDetailView: View {
             Button("Cancel", role: .cancel) { selectedDate = nil }
         } message: {
             if let date = selectedDate {
-                Text("This will fill in \(date, format: .dateTime.month(.wide).day()) and use 1 streak saver token. You have \(iapManager.streakSaverTokens) remaining.")
+                if iapManager.hasUnlimitedStreakSavers {
+                    Text("This will fill in \(date, format: .dateTime.month(.wide).day()).")
+                } else {
+                    Text("This will fill in \(date, format: .dateTime.month(.wide).day()) and use 1 streak saver token. You have \(iapManager.streakSaverTokens) remaining.")
+                }
             }
         }
         .confirmationDialog(
@@ -561,26 +565,37 @@ struct HabitDetailView: View {
                 Text("Streak Savers")
                     .font(.headline)
                 Spacer()
-                Text("\(iapManager.streakSaverTokens) remaining")
+                if iapManager.hasUnlimitedStreakSavers {
+                    HStack(spacing: 4) {
+                        Image(systemName: "infinity")
+                        Text("Unlimited")
+                    }
                     .font(.subheadline.weight(.semibold))
-                    .foregroundColor(.justPrimary)
+                    .foregroundColor(.justSuccess)
+                } else {
+                    Text("\(iapManager.streakSaverTokens) remaining")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundColor(.justPrimary)
+                }
             }
 
             Text("Tap a missed day on the graph above to fill it in and protect your streak.")
                 .font(.caption)
                 .foregroundColor(.secondary)
 
-            Button { showConsumableShop = true } label: {
-                HStack {
-                    Image(systemName: "cart.fill")
-                    Text("Get More Streak Savers")
-                        .fontWeight(.medium)
+            if !iapManager.hasUnlimitedStreakSavers {
+                Button { showConsumableShop = true } label: {
+                    HStack {
+                        Image(systemName: "cart.fill")
+                        Text("Get More Streak Savers")
+                            .fontWeight(.medium)
+                    }
+                    .font(.subheadline)
+                    .foregroundColor(.justPrimary)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 44)
+                    .background(Color.justPrimary.opacity(0.10), in: RoundedRectangle(cornerRadius: 12))
                 }
-                .font(.subheadline)
-                .foregroundColor(.justPrimary)
-                .frame(maxWidth: .infinity)
-                .frame(height: 44)
-                .background(Color.justPrimary.opacity(0.10), in: RoundedRectangle(cornerRadius: 12))
             }
         }
         .padding(20)

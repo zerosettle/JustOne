@@ -25,6 +25,8 @@ struct CheckoutSheetHeader: View {
             Text(product.displayName)
                 .font(.title3.weight(.bold))
 
+            freeTrialBadge
+
             priceRow
 
             savingsBadge
@@ -47,6 +49,21 @@ struct CheckoutSheetHeader: View {
                 .foregroundStyle(LinearGradient.premiumGradient)
                 .frame(width: 52, height: 52)
                 .background(Color.justPrimary.opacity(0.12), in: Circle())
+        }
+    }
+
+    // MARK: - Free Trial Badge
+
+    @ViewBuilder
+    private var freeTrialBadge: some View {
+        if let label = product.freeTrialLabel {
+            HStack(spacing: 4) {
+                Image(systemName: "gift.fill")
+                    .font(.caption2)
+                Text(label.capitalized)
+                    .font(.caption.weight(.semibold))
+            }
+            .foregroundColor(.justSuccess)
         }
     }
 

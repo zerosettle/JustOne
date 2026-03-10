@@ -74,6 +74,7 @@ struct ConsumableShopView: View {
             .checkoutSheet(
                 item: $webCheckoutProduct,
                 userId: authVM.appleUserID ?? "",
+                freeTrialDays: selection?.freeTrialDays ?? 0,
                 preload: .all,
                 onPresent: { isLoadingWebCheckout = false }
             ) {
@@ -154,12 +155,25 @@ struct ConsumableShopView: View {
                     .foregroundColor(.justWarning)
                 Text("Your Balance:")
                     .foregroundColor(.secondary)
-                Text("\(iapManager.streakSaverTokens) tokens")
+                if iapManager.hasUnlimitedStreakSavers {
+                    HStack(spacing: 4) {
+                        Image(systemName: "infinity")
+                        Text("Unlimited")
+                    }
                     .fontWeight(.bold)
+                    .foregroundColor(.justSuccess)
+                } else {
+                    Text("\(iapManager.streakSaverTokens) tokens")
+                        .fontWeight(.bold)
+                }
             }
 
             // Product rows
             VStack(spacing: 12) {
+                if !iapManager.hasUnlimitedStreakSavers {
+                    unlimitedStreakSaverRow
+                }
+
                 ForEach(ConsumableProduct.allCases) { product in
                     consumableRow(product)
                 }
@@ -205,20 +219,25 @@ struct ConsumableShopView: View {
                         }
                     }
 
-                    Text(tier.pricePerMonth)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                    if let trialLabel = tier.freeTrialLabel {
+                        Text(trialLabel)
+                            .font(.caption)
+                            .foregroundColor(.justSuccess)
+                    } else {
+                        Text(tier.pricePerMonth)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
                 }
 
                 Spacer()
 
                 priceColumn(productId: tier.productId, fallbackPrice: tier.price)
 
-                if isSelected {
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.title2)
-                        .foregroundColor(.justPrimary)
-                }
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.title2)
+                    .foregroundColor(.justPrimary)
+                    .opacity(isSelected ? 1 : 0)
             }
             .padding(16)
             .background(
@@ -262,6 +281,72 @@ struct ConsumableShopView: View {
         }
     }
 
+    // MARK: - Unlimited Streak Saver Row
+
+    @ViewBuilder
+    private var unlimitedStreakSaverRow: some View {
+        let isSelected = selection == .unlimitedStreakSavers
+
+        Button {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                selection = .unlimitedStreakSavers
+                isFooterExpanded = true
+            }
+        } label: {
+            HStack(spacing: 16) {
+                Image(systemName: "infinity")
+                    .font(.title2)
+                    .foregroundColor(.justWarning)
+                    .frame(width: 48, height: 48)
+                    .background(
+                        Color.justWarning.opacity(0.12),
+                        in: RoundedRectangle(cornerRadius: 14)
+                    )
+
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 6) {
+                        Text("Unlimited")
+                            .font(.headline)
+                        Text("BEST VALUE")
+                            .font(.system(size: 8, weight: .heavy))
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Color.justSuccess, in: Capsule())
+                    }
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
+                    Text([StreakSaverSubscription.freeTrialLabel, "\(StreakSaverSubscription.price)/mo"].compactMap { $0 }.joined(separator: " · "))
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+                }
+                .layoutPriority(1)
+
+                Spacer(minLength: 8)
+
+                priceColumn(productId: StreakSaverSubscription.productId, fallbackPrice: StreakSaverSubscription.price)
+                    .fixedSize()
+
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.title2)
+                    .foregroundColor(.justPrimary)
+                    .opacity(isSelected ? 1 : 0)
+            }
+            .padding(16)
+            .background(
+                RoundedRectangle(cornerRadius: 20)
+                    .fill(isSelected ? Color.justPrimary.opacity(0.1) : Color.clear)
+            )
+            .glassCard()
+            .overlay(
+                RoundedRectangle(cornerRadius: 20)
+                    .stroke(isSelected ? Color.justPrimary : Color.justWarning.opacity(0.3), lineWidth: 2)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
     // MARK: - Consumable Row
 
     @ViewBuilder
@@ -296,11 +381,10 @@ struct ConsumableShopView: View {
 
                 priceColumn(productId: product.productId, fallbackPrice: product.price)
 
-                if isSelected {
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.title2)
-                        .foregroundColor(.justPrimary)
-                }
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.title2)
+                    .foregroundColor(.justPrimary)
+                    .opacity(isSelected ? 1 : 0)
             }
             .padding(16)
             .background(
@@ -389,6 +473,8 @@ struct ConsumableShopView: View {
                             _ = try await iapManager.purchaseConsumable(product, userId: authVM.appleUserID)
                         case .subscription(let tier):
                             _ = try await iapManager.purchaseSubscription(tier, userId: authVM.appleUserID)
+                        case .unlimitedStreakSavers:
+                            _ = try await iapManager.purchaseStreakSaverSubscription(userId: authVM.appleUserID)
                         }
                     } catch where !ZeroSettleManager.isCancellation(error) {
                         errorMessage = error.localizedDescription
@@ -540,11 +626,13 @@ struct ConsumableShopView: View {
 private enum ShopSelection: Equatable {
     case consumable(ConsumableProduct)
     case subscription(SubscriptionTier)
+    case unlimitedStreakSavers
 
     var productId: String {
         switch self {
         case .consumable(let p): p.productId
         case .subscription(let t): t.productId
+        case .unlimitedStreakSavers: StreakSaverSubscription.productId
         }
     }
 
@@ -552,6 +640,7 @@ private enum ShopSelection: Equatable {
         switch self {
         case .consumable(let p): p.displayName
         case .subscription(let t): t.displayName
+        case .unlimitedStreakSavers: StreakSaverSubscription.displayName
         }
     }
 
@@ -559,6 +648,7 @@ private enum ShopSelection: Equatable {
         switch self {
         case .consumable(let p): p.price
         case .subscription(let t): t.price
+        case .unlimitedStreakSavers: StreakSaverSubscription.price
         }
     }
 
@@ -566,6 +656,7 @@ private enum ShopSelection: Equatable {
         switch self {
         case .consumable: "bandage.fill"
         case .subscription: "crown.fill"
+        case .unlimitedStreakSavers: "infinity"
         }
     }
 
@@ -573,6 +664,15 @@ private enum ShopSelection: Equatable {
         switch self {
         case .consumable: .justWarning
         case .subscription: .justPrimary
+        case .unlimitedStreakSavers: .justWarning
+        }
+    }
+
+    var freeTrialDays: Int {
+        switch self {
+        case .consumable: 0
+        case .subscription(let t): t.freeTrialDays
+        case .unlimitedStreakSavers: StreakSaverSubscription.freeTrialDays
         }
     }
 }

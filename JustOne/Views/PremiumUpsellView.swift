@@ -37,6 +37,7 @@ struct PremiumUpsellView: View {
             titleSection
             featureChecklist
             tierCards
+            freeTrialBanner
             dualPriceButtons
                 .padding(.vertical, 4)
             legalFooter
@@ -73,6 +74,7 @@ struct PremiumUpsellView: View {
         .checkoutSheet(
             item: $webCheckoutProduct,
             userId: authVM.appleUserID ?? "",
+            freeTrialDays: selectedTier.freeTrialDays,
             preload: .all,
             onPresent: { isLoadingWebCheckout = false }
         ) {
@@ -152,6 +154,11 @@ struct PremiumUpsellView: View {
 
     // MARK: - Tier Cards
 
+    /// Whether any of the visible tiers has a free trial (used to reserve consistent card height).
+    private var anyTierHasTrial: Bool {
+        upgradeTiers.contains { $0.freeTrialLabel != nil }
+    }
+
     private var tierCards: some View {
         HStack(spacing: 12) {
             ForEach(upgradeTiers) { tier in
@@ -174,6 +181,14 @@ struct PremiumUpsellView: View {
                 Text(tier.pricePerMonth)
                     .font(.caption)
                     .foregroundStyle(.secondary)
+
+                // Always reserve space for the trial line when any tier has a trial
+                Text(tier.freeTrialLabel ?? " ")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundColor(.justSuccess)
+                    .opacity(tier.freeTrialLabel != nil ? 1 : 0)
+                    .frame(height: anyTierHasTrial ? nil : 0)
+                    .clipped()
             }
             .padding(.vertical, 20)
             .padding(.horizontal, 12)
@@ -206,6 +221,21 @@ struct PremiumUpsellView: View {
             .shadow(color: .black.opacity(0.06), radius: 4, y: 2)
         }
         .buttonStyle(.plain)
+    }
+
+    // MARK: - Free Trial Banner
+
+    @ViewBuilder
+    private var freeTrialBanner: some View {
+        let label = selectedTier.freeTrialLabel
+        HStack(spacing: 6) {
+            Image(systemName: "gift.fill")
+                .font(.caption)
+            Text("Start your \(label ?? " ")")
+                .font(.subheadline.weight(.medium))
+        }
+        .foregroundColor(.justSuccess)
+        .opacity(label != nil ? 1 : 0)
     }
 
     // MARK: - Dual Price Buttons

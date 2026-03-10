@@ -11,6 +11,7 @@ import SwiftUI
 
 struct HabitRowView: View {
     let habit: Habit
+    var isLocked: Bool = false
     var onToggleToday: () -> Void = {}
     var onAffirmToday: (() -> Void)? = nil
     var onSlipToday: (() -> Void)? = nil
@@ -59,7 +60,11 @@ struct HabitRowView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
 
             // Quick check-in
-            if habit.status != .paused {
+            if isLocked {
+                Image(systemName: "lock.fill")
+                    .font(.system(size: 22))
+                    .foregroundColor(.secondary.opacity(0.4))
+            } else if habit.status != .paused {
                 if habit.isInverse && habit.status == .active {
                     inverseActionArea
                 } else {
@@ -80,7 +85,7 @@ struct HabitRowView: View {
         }
         .padding(16)
         .glassCard()
-        .opacity(habit.status == .paused ? 0.55 : 1.0)
+        .opacity(isLocked || habit.status == .paused ? 0.55 : 1.0)
     }
 
     // MARK: - Inverse Action Area

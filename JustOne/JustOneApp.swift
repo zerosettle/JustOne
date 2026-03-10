@@ -39,12 +39,21 @@ struct JustOneApp: App {
                             let catalog = try await ZeroSettle.shared.bootstrap(userId: userId)
                             AppLogger.iap.info("Bootstrap succeeded — \(catalog.products.count) products")
                             for p in ZeroSettle.shared.products {
-                                AppLogger.iap.info("  \(p.id): storeKit=\(p.storeKitPrice?.formatted ?? "nil"), web=\(p.webPrice?.formatted ?? "nil"), savings=\(p.savingsPercent.map(String.init) ?? "nil")")
+                                AppLogger.iap.info("  \(p.id): storeKit=\(p.storeKitPrice?.formatted ?? "nil"), web=\(p.webPrice?.formatted ?? "nil"), savings=\(p.savingsPercent.map(String.init) ?? "nil"), trial=\(p.freeTrialDuration ?? "nil"), trialEligible=\(p.isTrialEligible.map(String.init) ?? "nil")")
                             }
                         } catch {
                             AppLogger.iap.error("Bootstrap failed: \(error)")
                         }
-                        await iapManager.syncWithSDK(userId: userId)
+                        // Bootstrap already calls restoreEntitlements() internally —
+                        // just credit any new consumable tokens from the results.
+                        iapManager.creditNewConsumableTokens()
+                    }
+                }
+                .task {
+                    // Listen for real-time entitlement changes (renewals, cancellations,
+                    // server-side revocations) so the UI stays in sync automatically.
+                    for await _ in ZeroSettle.shared.entitlementUpdates {
+                        iapManager.creditNewConsumableTokens()
                     }
                 }
                 .zeroSettleHandler()

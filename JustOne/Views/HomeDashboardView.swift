@@ -88,6 +88,19 @@ struct HomeDashboardView: View {
         habits.filter { $0.status == .archived }
     }
 
+    /// The user's oldest visible (non-archived) habit, used to decide which habit stays unlocked for free users.
+    private var oldestVisibleHabit: Habit? {
+        visibleHabits.min(by: { $0.createdAt < $1.createdAt })
+    }
+
+    /// Returns `true` when the habit should be locked — i.e. the user is not premium
+    /// and this habit is not their oldest visible habit (the one "free" slot).
+    private func isHabitLocked(_ habit: Habit) -> Bool {
+        guard !iapManager.isPremium else { return false }
+        guard visibleHabits.count > 1 else { return false }
+        return habit !== oldestVisibleHabit
+    }
+
     // MARK: - Body
 
     var body: some View {
@@ -619,13 +632,19 @@ struct HomeDashboardView: View {
         } else {
             ForEach(displayedHabits) { habit in
                 Button {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                        navigatingHabit = habit
+                    if isHabitLocked(habit) {
+                        showPremiumUpsell = true
+                    } else {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                            navigatingHabit = habit
+                        }
                     }
                 } label: {
                     HabitRowView(
                         habit: habit,
+                        isLocked: isHabitLocked(habit),
                         onToggleToday: {
+                            guard !isHabitLocked(habit) else { return }
                             guard habit.status == .active else { return }
                             withAnimation(.easeInOut(duration: 0.2)) {
                                 habit.toggleCompletionAndReloadWidget(on: Date())
@@ -638,6 +657,7 @@ struct HomeDashboardView: View {
                             }
                         },
                         onAffirmToday: {
+                            guard !isHabitLocked(habit) else { return }
                             withAnimation(.easeInOut(duration: 0.2)) {
                                 if habit.isAffirmed(on: Date()) {
                                     habit.undoAffirmAndReloadWidget(on: Date())
@@ -648,6 +668,7 @@ struct HomeDashboardView: View {
                             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                         },
                         onSlipToday: {
+                            guard !isHabitLocked(habit) else { return }
                             withAnimation(.easeInOut(duration: 0.2)) {
                                 if !habit.isCompleted(on: Date()) {
                                     // Currently slipped — undo
@@ -662,31 +683,33 @@ struct HomeDashboardView: View {
                 }
                 .buttonStyle(LiquidPressStyle())
                 .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                    Button {
-                        habitToDelete = habit
-                    } label: {
-                        Label("Delete", systemImage: "trash")
-                    }
-                    .tint(.red)
+                    if !isHabitLocked(habit) {
+                        Button {
+                            habitToDelete = habit
+                        } label: {
+                            Label("Delete", systemImage: "trash")
+                        }
+                        .tint(.red)
 
-                    if showArchived {
-                        Button {
-                            habit.status = .active
-                        } label: {
-                            Label("Restore", systemImage: "arrow.uturn.backward")
+                        if showArchived {
+                            Button {
+                                habit.status = .active
+                            } label: {
+                                Label("Restore", systemImage: "arrow.uturn.backward")
+                            }
+                            .tint(.green)
+                        } else {
+                            Button {
+                                habit.status = .archived
+                            } label: {
+                                Label("Archive", systemImage: "archivebox")
+                            }
+                            .tint(.orange)
                         }
-                        .tint(.green)
-                    } else {
-                        Button {
-                            habit.status = .archived
-                        } label: {
-                            Label("Archive", systemImage: "archivebox")
-                        }
-                        .tint(.orange)
                     }
                 }
                 .swipeActions(edge: .leading, allowsFullSwipe: true) {
-                    if !showArchived {
+                    if !isHabitLocked(habit) && !showArchived {
                         if habit.status == .paused {
                             Button {
                                 habit.status = .active
@@ -706,46 +729,54 @@ struct HomeDashboardView: View {
                 }
                 .contentShape(.contextMenuPreview, RoundedRectangle(cornerRadius: 20))
                 .contextMenu {
-                    if showArchived {
+                    if isHabitLocked(habit) {
                         Button {
-                            withAnimation(.easeInOut(duration: 0.3)) {
-                                habit.status = .active
-                            }
+                            showPremiumUpsell = true
                         } label: {
-                            Label("Restore", systemImage: "arrow.uturn.backward")
+                            Label("Unlock with Pro", systemImage: "lock.open.fill")
                         }
                     } else {
-                        if habit.status == .paused {
+                        if showArchived {
                             Button {
                                 withAnimation(.easeInOut(duration: 0.3)) {
                                     habit.status = .active
                                 }
                             } label: {
-                                Label("Resume", systemImage: "play.fill")
+                                Label("Restore", systemImage: "arrow.uturn.backward")
                             }
                         } else {
+                            if habit.status == .paused {
+                                Button {
+                                    withAnimation(.easeInOut(duration: 0.3)) {
+                                        habit.status = .active
+                                    }
+                                } label: {
+                                    Label("Resume", systemImage: "play.fill")
+                                }
+                            } else {
+                                Button {
+                                    withAnimation(.easeInOut(duration: 0.3)) {
+                                        habit.status = .paused
+                                    }
+                                } label: {
+                                    Label("Pause", systemImage: "pause.fill")
+                                }
+                            }
+
                             Button {
                                 withAnimation(.easeInOut(duration: 0.3)) {
-                                    habit.status = .paused
+                                    habit.status = .archived
                                 }
                             } label: {
-                                Label("Pause", systemImage: "pause.fill")
+                                Label("Archive", systemImage: "archivebox")
                             }
                         }
 
-                        Button {
-                            withAnimation(.easeInOut(duration: 0.3)) {
-                                habit.status = .archived
-                            }
+                        Button(role: .destructive) {
+                            habitToDelete = habit
                         } label: {
-                            Label("Archive", systemImage: "archivebox")
+                            Label("Delete", systemImage: "trash")
                         }
-                    }
-
-                    Button(role: .destructive) {
-                        habitToDelete = habit
-                    } label: {
-                        Label("Delete", systemImage: "trash")
                     }
                 }
                 .transition(.asymmetric(

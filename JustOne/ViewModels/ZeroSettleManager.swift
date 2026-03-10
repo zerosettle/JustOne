@@ -54,6 +54,11 @@ class ZeroSettleManager {
 
     var isPremium: Bool { activeSubscription != nil }
 
+    /// Whether the user has an active Unlimited Streak Savers subscription.
+    var hasUnlimitedStreakSavers: Bool {
+        ZeroSettle.shared.hasActiveEntitlement(for: StreakSaverSubscription.productId)
+    }
+
     var isStoreKitBilling: Bool { billingProvider == .storeKit }
 
     var isAtHighestTier: Bool { activeSubscription == .yearly }
@@ -132,39 +137,44 @@ class ZeroSettleManager {
     }
 
     func useStreakSaver() -> Bool {
+        if hasUnlimitedStreakSavers { return true }
         guard streakSaverTokens > 0 else { return false }
         streakSaverTokens -= 1
         persistTokens()
         return true
     }
 
-    /// Calls the SDK's ``restoreEntitlements`` to get a unified view of all
-    /// purchases (StoreKit + web checkout) and credits tokens for any
-    /// web-checkout consumable entitlements not yet processed.
+    func purchaseStreakSaverSubscription(userId: String?) async throws -> Bool {
+        try await purchase(productId: StreakSaverSubscription.productId, userId: userId)
+    }
+
+    /// Credits tokens for any web-checkout consumable entitlements not yet processed.
+    /// Call after bootstrap or restore — reads from already-populated SDK entitlements.
+    func creditNewConsumableTokens() {
+        var knownIds = Set(
+            UserDefaults.standard.stringArray(forKey: Self.knownEntitlementIdsKey) ?? []
+        )
+        let newEntitlements = ZeroSettle.shared.newConsumableEntitlements(excluding: knownIds)
+        var didCreditTokens = false
+
+        for entitlement in newEntitlements {
+            if let product = ConsumableProduct.allCases.first(where: { $0.productId == entitlement.productId }) {
+                streakSaverTokens += product.tokenCount
+                didCreditTokens = true
+            }
+            knownIds.insert(entitlement.id)
+        }
+
+        UserDefaults.standard.set(Array(knownIds), forKey: Self.knownEntitlementIdsKey)
+        if didCreditTokens { persistTokens() }
+    }
+
+    /// Restores entitlements from the SDK and credits any new consumable tokens.
     func syncWithSDK(userId: String) async {
         do {
-            let entitlements = try await ZeroSettle.shared.restoreEntitlements(userId: userId)
-
-            // --- Consumables (web-checkout only) ---
-            var knownIds = Set(
-                UserDefaults.standard.stringArray(forKey: Self.knownEntitlementIdsKey) ?? []
-            )
-            var didCreditTokens = false
-
-            for entitlement in entitlements where entitlement.source == .webCheckout {
-                guard !knownIds.contains(entitlement.id) else { continue }
-                if let product = ConsumableProduct.allCases.first(where: { $0.productId == entitlement.productId }) {
-                    streakSaverTokens += product.tokenCount
-                    didCreditTokens = true
-                }
-                knownIds.insert(entitlement.id)
-            }
-
-            UserDefaults.standard.set(Array(knownIds), forKey: Self.knownEntitlementIdsKey)
-            if didCreditTokens { persistTokens() }
-
+            try await ZeroSettle.shared.restoreEntitlements(userId: userId)
+            creditNewConsumableTokens()
             logSwitchAndSaveEligibility()
-
         } catch {
             AppLogger.iap.error("Failed to restore entitlements: \(error)")
         }
@@ -208,12 +218,7 @@ class ZeroSettleManager {
 
     /// Returns true for any flavour of user-initiated cancellation.
     static func isCancellation(_ error: Error) -> Bool {
-        if let zsError = error as? ZeroSettleError, case .cancelled = zsError { return true }
-        if error is CancellationError { return true }
-        if let skError = error as? StoreKitError, case .userCancelled = skError { return true }
-        // PaymentSheetError.cancelled is internal to ZeroSettleKit
-        if error.localizedDescription == "Payment was cancelled" { return true }
-        return false
+        ZeroSettleError.isCancellation(error)
     }
 
     func restorePurchases(userId: String? = nil) async throws {

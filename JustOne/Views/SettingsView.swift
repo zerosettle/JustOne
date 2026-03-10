@@ -546,27 +546,43 @@ struct SettingsView: View {
 
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("\(iapManager.streakSaverTokens)")
-                        .font(.system(size: 36, weight: .bold, design: .rounded))
-                        .foregroundColor(.justWarning)
-                    Text("tokens available")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
+                    if iapManager.hasUnlimitedStreakSavers {
+                        HStack(spacing: 6) {
+                            Image(systemName: "infinity")
+                                .font(.system(size: 28, weight: .bold))
+                                .foregroundColor(.justWarning)
+                            Text("Unlimited")
+                                .font(.system(size: 36, weight: .bold, design: .rounded))
+                                .foregroundColor(.justWarning)
+                        }
+                        Text("subscription active")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    } else {
+                        Text("\(iapManager.streakSaverTokens)")
+                            .font(.system(size: 36, weight: .bold, design: .rounded))
+                            .foregroundColor(.justWarning)
+                        Text("tokens available")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    }
                 }
 
                 Spacer()
 
-                Button { showConsumableShop = true } label: {
-                    HStack {
-                        Image(systemName: "plus.circle.fill")
-                        Text("Buy More")
-                            .fontWeight(.medium)
+                if !iapManager.hasUnlimitedStreakSavers {
+                    Button { showConsumableShop = true } label: {
+                        HStack {
+                            Image(systemName: "plus.circle.fill")
+                            Text("Buy More")
+                                .fontWeight(.medium)
+                        }
+                        .font(.subheadline)
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 10)
+                        .background(Color.justWarning, in: Capsule())
                     }
-                    .font(.subheadline)
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 10)
-                    .background(Color.justWarning, in: Capsule())
                 }
             }
         }

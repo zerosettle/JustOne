@@ -90,6 +90,20 @@ enum SubscriptionTier: String, CaseIterable, Identifiable {
         case .yearly:  return 2
         }
     }
+
+    // MARK: - Free Trial
+
+    /// Human-readable free trial label from the SDK catalog, e.g. "3-day free trial".
+    /// Returns nil when no trial is configured or the user is ineligible.
+    var freeTrialLabel: String? {
+        zsProduct?.freeTrialLabel
+    }
+
+    /// Free trial duration in days, parsed from the SDK catalog.
+    /// Returns 0 when no trial or user is ineligible.
+    var freeTrialDays: Int {
+        zsProduct?.freeTrialDays ?? 0
+    }
 }
 
 // MARK: - Consumable Products
@@ -136,5 +150,37 @@ enum ConsumableProduct: String, CaseIterable, Identifiable {
         case .streakSaver1: return "io.zerosettle.JustOne.streakSaver1"
         case .streakSaver5: return "io.zerosettle.JustOne.streakSavers5"
         }
+    }
+}
+
+// MARK: - Streak Saver Subscription
+
+enum StreakSaverSubscription {
+    static let productId = "io.zerosettle.justone.unlimitedStreakSavers"
+    static let displayName = "Unlimited Streak Savers"
+    static let description = "Never worry about missing a day again"
+
+    private static var zsProduct: ZSProduct? {
+        ZeroSettle.shared.product(for: productId)
+    }
+
+    static var price: String {
+        zsProduct?.storeKitPrice?.formatted ?? "$9.99"
+    }
+
+    static var priceCents: Int {
+        zsProduct?.storeKitPrice?.amountCents ?? 999
+    }
+
+    /// Human-readable free trial label from the SDK catalog, e.g. "3-day free trial".
+    /// Returns nil when no trial is configured or the user is ineligible.
+    static var freeTrialLabel: String? {
+        zsProduct?.freeTrialLabel
+    }
+
+    /// Free trial duration in days, parsed from the SDK catalog.
+    /// Returns 0 when no trial or user is ineligible.
+    static var freeTrialDays: Int {
+        zsProduct?.freeTrialDays ?? 0
     }
 }

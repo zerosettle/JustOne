@@ -204,3 +204,41 @@ extension View {
         modifier(GlassCardModifier(cornerRadius: cornerRadius))
     }
 }
+
+// MARK: - Glass Effect Compatibility
+
+/// Applies `.glassEffect` on iOS 26+, falls back to a tinted background on older versions.
+struct GlassEffectModifier: ViewModifier {
+    var tint: Color?
+    var shape: GlassShape = .capsule
+
+    enum GlassShape {
+        case capsule, circle
+    }
+
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            switch shape {
+            case .capsule:
+                if let tint {
+                    content.glassEffect(.regular.tint(tint).interactive(), in: .capsule)
+                } else {
+                    content.glassEffect(.regular.interactive(), in: .capsule)
+                }
+            case .circle:
+                if let tint {
+                    content.glassEffect(.regular.tint(tint).interactive(), in: .circle)
+                } else {
+                    content.glassEffect(.regular.interactive(), in: .circle)
+                }
+            }
+        } else {
+            switch shape {
+            case .capsule:
+                content.background(tint?.opacity(0.15) ?? Color(.secondarySystemBackground), in: Capsule())
+            case .circle:
+                content.background(tint ?? Color(.secondarySystemBackground), in: Circle())
+            }
+        }
+    }
+}

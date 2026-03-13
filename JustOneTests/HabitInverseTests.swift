@@ -10,6 +10,7 @@ import Testing
 import Foundation
 @testable import JustOne
 
+@Suite("Inverse habit completion, streaks, and slip counting")
 struct HabitInverseTests {
 
     // MARK: - Helpers

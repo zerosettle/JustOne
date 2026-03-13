@@ -1,5 +1,5 @@
 //
-//  ZeroSettleManager.swift
+//  PurchaseManager.swift
 //  JustOne
 //
 //  App-level IAP manager. Delegates product loading, purchases,
@@ -14,13 +14,14 @@ import ZeroSettleKit
 
 // MARK: - Manager
 
+@MainActor
 @Observable
-class ZeroSettleManager {
+final class PurchaseManager {
 
     // MARK: - Stored State
 
-    var streakSaverTokens: Int = 0
-    var isPurchasing = false
+    private(set) var isPurchasing = false
+    var streakSaverTokens: Int = 0 // internal(set) for test access
 
     // MARK: - Persistence
 
@@ -39,6 +40,8 @@ class ZeroSettleManager {
 
     // MARK: - Computed Entitlement State
 
+    // SDK PATTERN: Derive subscription state from active entitlements.
+    // The SDK tracks entitlements from both StoreKit and web checkout.
     /// The highest-rank active subscription tier, derived from SDK entitlements.
     var activeSubscription: SubscriptionTier? {
         Self.resolveActiveSubscription(from: ZeroSettle.shared.activeEntitlements)
@@ -123,6 +126,9 @@ class ZeroSettleManager {
 
     // MARK: - Purchase Flows
 
+    // SDK PATTERN: Purchase via StoreKit through the SDK.
+    // purchaseViaStoreKit() handles the StoreKit transaction and records
+    // the entitlement server-side in one call.
     func purchaseSubscription(_ tier: SubscriptionTier, userId: String?) async throws -> Bool {
         try await purchase(productId: tier.productId, userId: userId)
     }
@@ -148,6 +154,8 @@ class ZeroSettleManager {
         try await purchase(productId: StreakSaverSubscription.productId, userId: userId)
     }
 
+    // SDK PATTERN: Credit consumable tokens from web checkout.
+    // newConsumableEntitlements(excluding:) returns only unprocessed consumables.
     /// Credits tokens for any web-checkout consumable entitlements not yet processed.
     /// Call after bootstrap or restore — reads from already-populated SDK entitlements.
     func creditNewConsumableTokens() {
@@ -211,14 +219,9 @@ class ZeroSettleManager {
             if let userId { await syncWithSDK(userId: userId) }
             return nil
         case .failure(let error):
-            if Self.isCancellation(error) { return nil }
+            if ZeroSettleError.isCancellation(error) { return nil }
             return error.localizedDescription
         }
-    }
-
-    /// Returns true for any flavour of user-initiated cancellation.
-    static func isCancellation(_ error: Error) -> Bool {
-        ZeroSettleError.isCancellation(error)
     }
 
     func restorePurchases(userId: String? = nil) async throws {
@@ -247,5 +250,28 @@ class ZeroSettleManager {
             if case .userCancelled = error { return false }
             throw error
         }
+    }
+}
+
+// MARK: - ZeroSettleDelegate
+
+// SDK PATTERN: ZeroSettleDelegate provides lifecycle callbacks for the
+// checkout sheet. Use alongside @Observable and entitlementUpdates for
+// complete observability of the purchase flow.
+extension PurchaseManager: ZeroSettleDelegate {
+    nonisolated func zeroSettleDidPresentCheckout(productId: String) {
+        AppLogger.iap.info("[Delegate] Checkout presented for \(productId)")
+    }
+
+    nonisolated func zeroSettleDidDismissCheckout(productId: String) {
+        AppLogger.iap.info("[Delegate] Checkout dismissed for \(productId)")
+    }
+
+    nonisolated func zeroSettleDidCompleteCheckout(productId: String) {
+        AppLogger.iap.info("[Delegate] Checkout completed for \(productId)")
+    }
+
+    nonisolated func zeroSettleDidFailCheckout(productId: String, error: Error) {
+        AppLogger.iap.error("[Delegate] Checkout failed for \(productId): \(error)")
     }
 }

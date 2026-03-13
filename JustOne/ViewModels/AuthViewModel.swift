@@ -10,12 +10,13 @@
 import SwiftUI
 import AuthenticationServices
 
+@MainActor
 @Observable
-class AuthViewModel {
-    var currentUser: User?
-    var isAuthenticated = false
-    var isLoading = false
-    var hasRestoredSession = false
+final class AuthViewModel {
+    private(set) var currentUser: User?
+    private(set) var isAuthenticated = false
+    private(set) var isLoading = false
+    private(set) var hasRestoredSession = false
 
     private static let appleUserIDKey = "appleUserID"
     private static let userDefaultsKey = "storedUser"

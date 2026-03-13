@@ -20,7 +20,6 @@ struct HabitRowView: View {
 
     var body: some View {
         HStack(spacing: 16) {
-            // Icon badge
             Image(systemName: habit.icon)
                 .font(.title2)
                 .foregroundColor(habit.displayColor)
@@ -30,7 +29,6 @@ struct HabitRowView: View {
                     in: RoundedRectangle(cornerRadius: 14)
                 )
 
-            // Name, goal subtitle & mini heatmap
             VStack(alignment: .leading, spacing: 6) {
                 Text(habit.name)
                     .font(.headline)
@@ -59,7 +57,6 @@ struct HabitRowView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
-            // Quick check-in
             if isLocked {
                 Image(systemName: "lock.fill")
                     .font(.system(size: 22))
@@ -76,6 +73,10 @@ struct HabitRowView: View {
                             .foregroundColor(toggleIconColor)
                     }
                     .buttonStyle(.borderless)
+                    .accessibilityLabel(habit.isCompleted(on: today)
+                        ? "Mark \(habit.name) incomplete"
+                        : "Mark \(habit.name) complete"
+                    )
                 }
             }
 

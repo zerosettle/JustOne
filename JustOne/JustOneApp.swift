@@ -13,26 +13,34 @@ import ZeroSettleKit
 
 @main
 struct JustOneApp: App {
-    @State private var authVM = AuthViewModel()
-    @State private var iapManager = ZeroSettleManager()
+    @State private var authViewModel = AuthViewModel()
+    @State private var purchaseManager = PurchaseManager()
 
     init() {
+        // SDK PATTERN: Configure ZeroSettleKit before any other SDK call.
+        // In debug builds, DebugEnvironment handles server/mode selection.
 #if DEBUG
         DebugEnvironment.apply()
 #else
         let key = "zs_pk_live_2c44f5c468ff4907322a0f8825e976bce0a7be46571af88b"
-        ZeroSettle.shared.configure(.init(publishableKey: key, preloadCheckout: true))
+        // Each preloaded WebView uses ~3-7 MB; nil = no limit, fine for small catalogs
+        ZeroSettle.shared.configure(.init(publishableKey: key, preloadCheckout: true, maxPreloadedWebViews: nil))
 #endif
     }
 
     var body: some Scene {
         WindowGroup {
             ContentView()
-                .environment(authVM)
-                .environment(iapManager)
-                .task { await authVM.restoreSession() }
-                .task(id: authVM.isAuthenticated) {
-                    if authVM.isAuthenticated, let userId = authVM.appleUserID {
+                .environment(authViewModel)
+                .environment(purchaseManager)
+                // SDK PATTERN: Wire up the delegate for checkout lifecycle callbacks.
+                .onAppear { ZeroSettle.shared.delegate = purchaseManager }
+                .task { await authViewModel.restoreSession() }
+                // SDK PATTERN: bootstrap() fetches the product catalog, restores
+                // entitlements, and starts the StoreKit transaction listener — all in
+                // one call. You do NOT need to call restoreEntitlements() separately.
+                .task(id: authViewModel.isAuthenticated) {
+                    if authViewModel.isAuthenticated, let userId = authViewModel.appleUserID {
                         do {
                             let catalog = try await ZeroSettle.shared.bootstrap(userId: userId)
                             AppLogger.iap.info("Bootstrap succeeded — \(catalog.products.count) products")
@@ -42,18 +50,19 @@ struct JustOneApp: App {
                         } catch {
                             AppLogger.iap.error("Bootstrap failed: \(error)")
                         }
-                        // Bootstrap already calls restoreEntitlements() internally —
-                        // just credit any new consumable tokens from the results.
-                        iapManager.creditNewConsumableTokens()
+                        purchaseManager.creditNewConsumableTokens()
                     }
                 }
+                // SDK PATTERN: entitlementUpdates stream for real-time sync.
+                // Fires on renewals, cancellations, and server-side revocations
+                // so the UI stays current without polling.
                 .task {
-                    // Listen for real-time entitlement changes (renewals, cancellations,
-                    // server-side revocations) so the UI stays in sync automatically.
                     for await _ in ZeroSettle.shared.entitlementUpdates {
-                        iapManager.creditNewConsumableTokens()
+                        purchaseManager.creditNewConsumableTokens()
                     }
                 }
+                // SDK PATTERN: .zeroSettleHandler() enables universal-link callbacks
+                // for web checkout. Required for the checkout sheet to work.
                 .zeroSettleHandler()
         }
         .modelContainer(SharedModelContainer.create())

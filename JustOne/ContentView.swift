@@ -8,24 +8,24 @@
 import SwiftUI
 
 struct ContentView: View {
-    @Environment(AuthViewModel.self) var authVM
+    @Environment(AuthViewModel.self) var authViewModel
 
     var body: some View {
         Group {
-            if !authVM.hasRestoredSession {
+            if !authViewModel.hasRestoredSession {
                 // Hold on a blank/branded screen until session restore completes
                 ZStack {
                     LinearGradient.justBackground.ignoresSafeArea()
                     ProgressView()
                         .tint(.justPrimary)
                 }
-            } else if authVM.isAuthenticated {
+            } else if authViewModel.isAuthenticated {
                 HomeDashboardView()
             } else {
                 LoginView()
             }
         }
-        .animation(.easeInOut(duration: 0.3), value: authVM.isAuthenticated)
-        .animation(.easeInOut(duration: 0.3), value: authVM.hasRestoredSession)
+        .animation(.easeInOut(duration: 0.3), value: authViewModel.isAuthenticated)
+        .animation(.easeInOut(duration: 0.3), value: authViewModel.hasRestoredSession)
     }
 }

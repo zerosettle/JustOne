@@ -10,6 +10,7 @@ import Testing
 import Foundation
 @testable import JustOne
 
+@Suite("Habit entity conversion and toggle intent behavior")
 struct WidgetIntentTests {
 
     // MARK: - Helpers

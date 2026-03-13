@@ -9,6 +9,7 @@ import Testing
 import Foundation
 @testable import JustOne
 
+@Suite("Habit status lifecycle, filtering, and streak-freeze behavior")
 struct HabitStatusTests {
 
     // MARK: - Helpers

@@ -2,8 +2,9 @@
 //  ZeroSettleProduct.swift
 //  JustOne
 //
-//  Product catalog for the ZeroSettle IAP mock layer.
-//  Contains subscription tiers and consumable "Streak Saver" tokens.
+//  Product catalog defining subscription tiers and consumable products.
+//  Maps app-specific product types to ZeroSettleKit product IDs and
+//  resolves live pricing from the SDK catalog.
 //
 
 import Foundation

@@ -10,6 +10,7 @@ import Testing
 import Foundation
 @testable import JustOne
 
+@Suite("Journey habit level transitions, milestones, and conversion")
 struct HabitJourneyTests {
 
     // MARK: - Helpers

@@ -11,7 +11,7 @@ import WidgetKit
 extension Habit {
 
     /// Use a streak saver token to fill in a missed day.
-    func fillMissedDay(on date: Date, using manager: ZeroSettleManager) -> Bool {
+    @MainActor func fillMissedDay(on date: Date, using manager: PurchaseManager) -> Bool {
         guard manager.useStreakSaver() else { return false }
         let key = Self.dateKey(for: date)
         if !completedDates.contains(key) {

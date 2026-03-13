@@ -103,7 +103,7 @@ struct ContributionGraphView: View {
                                 }
                                 touchedCell = (col: col, row: row)
                                 if isNewCell && dragActive {
-                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                    HapticFeedback.impact(.light)
                                 }
                             } else if touchedCell != nil {
                                 touchedCell = nil

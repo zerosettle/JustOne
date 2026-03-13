@@ -47,8 +47,8 @@ private enum DebugAccountStore {
 // MARK: - View
 
 struct DebugSettingsView: View {
-    @Environment(AuthViewModel.self) private var authVM
-    @Environment(ZeroSettleManager.self) private var iapManager
+    @Environment(AuthViewModel.self) private var authViewModel
+    @Environment(PurchaseManager.self) private var purchaseManager
 
     @State private var selectedServer = DebugEnvironment.server
     @State private var selectedMode   = DebugEnvironment.mode
@@ -66,7 +66,7 @@ struct DebugSettingsView: View {
         DebugEnvironment.baseURL(server: selectedServer)?.absoluteString ?? "SDK default"
     }
 
-    private var activeUserId: String? { authVM.appleUserID }
+    private var activeUserId: String? { authViewModel.appleUserID }
 
     var body: some View {
         Form {
@@ -220,14 +220,14 @@ struct DebugSettingsView: View {
         DebugEnvironment.mode = selectedMode
         DebugEnvironment.apply()
 
-        guard let userId = authVM.appleUserID else {
+        guard let userId = authViewModel.appleUserID else {
             statusMessage = "Configured (no user — skipped bootstrap)"
             return
         }
 
         do {
             let catalog = try await ZeroSettle.shared.bootstrap(userId: userId)
-            iapManager.creditNewConsumableTokens()
+            purchaseManager.creditNewConsumableTokens()
             statusMessage = "Switched — \(catalog.products.count) products loaded"
         } catch {
             statusMessage = "Error: \(error.localizedDescription)"
@@ -249,7 +249,7 @@ struct DebugSettingsView: View {
     }
 
     private func switchTo(_ account: DebugAccount) {
-        authVM.debugSignIn(userId: account.id, label: account.label)
+        authViewModel.debugSignIn(userId: account.id, label: account.label)
         statusMessage = nil
         // isAuthenticated change triggers bootstrap in JustOneApp
     }

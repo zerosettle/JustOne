@@ -38,6 +38,9 @@ enum DebugMode: String, CaseIterable, Identifiable {
     }
 }
 
+// ZeroSettleKit publishable keys — safe to embed in client code.
+// "zs_pk_live_*" → production payment backend
+// "zs_pk_test_*" → sandbox/testing backend (no real charges)
 enum DebugEnvironment {
 
     private static let serverKey = "debug_server"

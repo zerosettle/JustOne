@@ -10,6 +10,7 @@ import Testing
 import Foundation
 @testable import JustOne
 
+@Suite("WeekCalendar locale-aware week starts, day labels, and month labels")
 struct WeekCalendarTests {
 
     // MARK: - Helpers

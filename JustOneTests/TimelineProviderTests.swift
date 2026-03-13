@@ -10,6 +10,7 @@ import Testing
 import Foundation
 @testable import JustOne
 
+@Suite("Timeline entry construction for widget views")
 struct TimelineProviderTests {
 
     // MARK: - Helpers

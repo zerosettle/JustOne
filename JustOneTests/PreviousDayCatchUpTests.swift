@@ -9,6 +9,7 @@ import Testing
 import Foundation
 @testable import JustOne
 
+@Suite("Previous-day catch-up detection and mutation")
 struct PreviousDayCatchUpTests {
 
     // MARK: - Helpers

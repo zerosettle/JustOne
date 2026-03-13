@@ -9,6 +9,7 @@ import Testing
 import Foundation
 @testable import JustOne
 
+@Suite("Shared model container factory and migration logic")
 struct SharedModelContainerTests {
 
     @Test func appGroupIDIsCorrect() {

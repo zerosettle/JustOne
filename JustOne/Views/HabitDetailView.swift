@@ -15,7 +15,7 @@ struct HabitDetailView: View {
     let habit: Habit
 
     @Environment(\.modelContext) private var modelContext
-    @Environment(ZeroSettleManager.self) var iapManager
+    @Environment(PurchaseManager.self) var purchaseManager
     @Environment(\.dismiss) var dismiss
 
     @State private var selectedDate: Date? = nil
@@ -185,17 +185,17 @@ struct HabitDetailView: View {
         .alert("Use Streak Saver?", isPresented: $showStreakSaverConfirm) {
             Button("Use Token", role: .destructive) {
                 if let date = selectedDate {
-                    _ = habit.fillMissedDay(on: date, using: iapManager)
+                    _ = habit.fillMissedDay(on: date, using: purchaseManager)
                 }
                 selectedDate = nil
             }
             Button("Cancel", role: .cancel) { selectedDate = nil }
         } message: {
             if let date = selectedDate {
-                if iapManager.hasUnlimitedStreakSavers {
+                if purchaseManager.hasUnlimitedStreakSavers {
                     Text("This will fill in \(date, format: .dateTime.month(.wide).day()).")
                 } else {
-                    Text("This will fill in \(date, format: .dateTime.month(.wide).day()) and use 1 streak saver token. You have \(iapManager.streakSaverTokens) remaining.")
+                    Text("This will fill in \(date, format: .dateTime.month(.wide).day()) and use 1 streak saver token. You have \(purchaseManager.streakSaverTokens) remaining.")
                 }
             }
         }
@@ -427,10 +427,11 @@ struct HabitDetailView: View {
             withAnimation(.easeInOut(duration: 0.25)) {
                 habit.toggleCompletionAndReloadWidget(on: today)
             }
-            UIImpactFeedbackGenerator(style: habit.isCompleted(on: today) ? .medium : .light).impactOccurred()
+            HapticFeedback.impact(habit.isCompleted(on: today) ? .medium : .light)
             // Check for level-up after completing (not uncompleting)
             if habit.isCompleted(on: today) && habit.qualifiesForLevelUp() {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                Task { @MainActor in
+                    try? await Task.sleep(for: .milliseconds(500))
                     showLevelUp = true
                 }
             }
@@ -466,7 +467,7 @@ struct HabitDetailView: View {
                 withAnimation(.easeInOut(duration: 0.25)) {
                     habit.undoAffirmAndReloadWidget(on: today)
                 }
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                HapticFeedback.impact(.light)
             } label: {
                 HStack(spacing: 10) {
                     Image(systemName: "checkmark.shield.fill")
@@ -488,7 +489,7 @@ struct HabitDetailView: View {
                 withAnimation(.easeInOut(duration: 0.25)) {
                     habit.undoSlipAndReloadWidget(on: today)
                 }
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                HapticFeedback.impact(.light)
             } label: {
                 HStack(spacing: 10) {
                     Image(systemName: "xmark.circle.fill")
@@ -511,7 +512,7 @@ struct HabitDetailView: View {
                     withAnimation(.easeInOut(duration: 0.25)) {
                         habit.affirmDayAndReloadWidget(on: today)
                     }
-                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                    HapticFeedback.impact(.medium)
                 } label: {
                     HStack(spacing: 8) {
                         Image(systemName: "checkmark.shield.fill")
@@ -529,7 +530,7 @@ struct HabitDetailView: View {
                     withAnimation(.easeInOut(duration: 0.25)) {
                         habit.logSlipAndReloadWidget(on: today)
                     }
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    HapticFeedback.impact(.light)
                 } label: {
                     HStack(spacing: 8) {
                         Image(systemName: "xmark.circle")
@@ -584,7 +585,7 @@ struct HabitDetailView: View {
                 Text("Streak Savers")
                     .font(.headline)
                 Spacer()
-                if iapManager.hasUnlimitedStreakSavers {
+                if purchaseManager.hasUnlimitedStreakSavers {
                     HStack(spacing: 4) {
                         Image(systemName: "infinity")
                         Text("Unlimited")
@@ -592,7 +593,7 @@ struct HabitDetailView: View {
                     .font(.subheadline.weight(.semibold))
                     .foregroundColor(.justSuccess)
                 } else {
-                    Text("\(iapManager.streakSaverTokens) remaining")
+                    Text("\(purchaseManager.streakSaverTokens) remaining")
                         .font(.subheadline.weight(.semibold))
                         .foregroundColor(.justPrimary)
                 }
@@ -602,7 +603,7 @@ struct HabitDetailView: View {
                 .font(.caption)
                 .foregroundColor(.secondary)
 
-            if !iapManager.hasUnlimitedStreakSavers {
+            if !purchaseManager.hasUnlimitedStreakSavers {
                 Button { showConsumableShop = true } label: {
                     HStack {
                         Image(systemName: "cart.fill")

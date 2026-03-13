@@ -13,8 +13,8 @@ import ZeroSettleKit
 
 struct SettingsView: View {
     @Query var habits: [Habit]
-    @Environment(AuthViewModel.self) var authVM
-    @Environment(ZeroSettleManager.self) var iapManager
+    @Environment(AuthViewModel.self) var authViewModel
+    @Environment(PurchaseManager.self) var purchaseManager
 
     @State private var showPremiumUpsell = false
     @State private var showConsumableShop = false
@@ -32,59 +32,32 @@ struct SettingsView: View {
         return Calendar.current.date(from: comps) ?? Calendar.current.date(from: DateComponents(hour: 20, minute: 0))!
     }()
 
-    // MARK: - Aggregate Stats
-
-    private var longestStreak: Int {
-        habits.map(\.currentStreak).max() ?? 0
-    }
-
-    private var consistencyThisMonth: Int {
-        let calendar = Calendar.current
-        let today = Date()
-        guard let monthInterval = calendar.dateInterval(of: .month, for: today) else { return 0 }
-
-        let daysElapsed = max(calendar.dateComponents([.day], from: monthInterval.start, to: today).day ?? 0, 1)
-
-        var totalExpected = 0
-        var totalCompleted = 0
-
-        for habit in habits {
-            let dailyRate = Double(habit.frequencyPerWeek) / 7.0
-            totalExpected += Int(ceil(dailyRate * Double(daysElapsed)))
-
-            var day = monthInterval.start
-            while day <= today {
-                if habit.isCompleted(on: day) { totalCompleted += 1 }
-                day = calendar.date(byAdding: .day, value: 1, to: day)!
-            }
-        }
-
-        guard totalExpected > 0 else { return 0 }
-        return min(Int(Double(totalCompleted) / Double(totalExpected) * 100), 100)
-    }
-
     // MARK: - Body
 
     var body: some View {
         mainContent
+            // SDK PATTERN: .upgradeOffer() for backend-driven plan upgrade UI.
+            // Shows a native upgrade sheet with price comparison and prorated refund.
             .upgradeOffer(
                 isPresented: $showAnnualUpgrade,
                 productId: SubscriptionTier.yearly.productId,
-                userId: authVM.appleUserID ?? "",
+                userId: authViewModel.appleUserID ?? "",
                 onResult: { result in
                     if case .upgraded = result {
-                        Task { await iapManager.syncWithSDK(userId: authVM.appleUserID ?? "") }
+                        Task { await purchaseManager.syncWithSDK(userId: authViewModel.appleUserID ?? "") }
                     }
                 }
             )
+            // SDK PATTERN: .cancelFlow() for retention/cancellation flow.
+            // Presents a backend-configured retention offer before cancelling.
             .cancelFlow(
                 isPresented: $showCancelFlow,
-                productId: iapManager.activeSubscription?.productId ?? "",
-                userId: authVM.appleUserID ?? "",
+                productId: purchaseManager.activeSubscription?.productId ?? "",
+                userId: authViewModel.appleUserID ?? "",
                 onResult: { result in
                     switch result {
                     case .cancelled, .paused:
-                        Task { await iapManager.syncWithSDK(userId: authVM.appleUserID ?? "") }
+                        Task { await purchaseManager.syncWithSDK(userId: authViewModel.appleUserID ?? "") }
                     case .dismissed:
                         // Cancel flow not configured — show fallback cancel UI
                         showFallbackCancel = true
@@ -101,18 +74,26 @@ struct SettingsView: View {
 
             ScrollView {
                 VStack(spacing: 20) {
-                    accountCard
+                    AccountCardView(user: authViewModel.currentUser, habits: habits)
                     weeklyReflectionCard
 
+                    // SDK PATTERN: Migration banner for StoreKit→web Switch & Save.
+                    // migrationManager is non-nil when the user is eligible to
+                    // migrate from StoreKit billing to direct billing at a discount.
                     if let manager = ZeroSettle.shared.migrationManager,
                        manager.state == .eligible || manager.state == .presented,
                        let offer = manager.offerData {
                         migrationBanner(manager: manager, offer: offer)
                     }
 
-                    subscriptionCard
-                    streakSaverCard
-                    reminderCard
+                    SubscriptionCardView(
+                        showPremiumUpsell: $showPremiumUpsell,
+                        showAnnualUpgrade: $showAnnualUpgrade,
+                        showCancelFlow: $showCancelFlow,
+                        isUpgradeAvailable: isUpgradeAvailable
+                    )
+                    StreakSaverCardView(showConsumableShop: $showConsumableShop)
+                    ReminderCardView(reminderEnabled: $reminderEnabled, reminderTime: $reminderTime)
                     supportSection
 
                     #if DEBUG
@@ -151,9 +132,12 @@ struct SettingsView: View {
         } message: {
             Text("Your purchases have been restored successfully.")
         }
+        // SDK PATTERN: .checkoutSheet presents web checkout overlay.
+        // This instance uses migration-specific freeTrialDays and tracks
+        // Switch & Save conversion on success.
         .checkoutSheet(
             item: $webCheckoutProduct,
-            userId: authVM.appleUserID ?? "",
+            userId: authViewModel.appleUserID ?? "",
             freeTrialDays: ZeroSettle.shared.migrationManager?.offerData?.freeTrialDays ?? 0,
             preload: .all
         ) {
@@ -163,7 +147,7 @@ struct SettingsView: View {
         } onComplete: { result in
             isMigrationLoading = false
             Task {
-                errorMessage = await iapManager.processWebCheckout(result, userId: authVM.appleUserID)
+                errorMessage = await purchaseManager.processWebCheckout(result, userId: authViewModel.appleUserID)
                 // If this was a migration checkout, track the conversion
                 if case .success = result,
                    let manager = ZeroSettle.shared.migrationManager,
@@ -174,10 +158,10 @@ struct SettingsView: View {
             }
         }
         .task {
-            guard let userId = authVM.appleUserID else { return }
+            guard let userId = authViewModel.appleUserID else { return }
 
             // Warm up the active subscription tier's checkout
-            if let tier = iapManager.activeSubscription {
+            if let tier = purchaseManager.activeSubscription {
                 await CheckoutSheet.warmUp(productId: tier.productId, userId: userId)
             }
 
@@ -187,7 +171,7 @@ struct SettingsView: View {
             }
 
             // Check if an upgrade offer is available from the backend
-            if iapManager.canUpgradeToAnnual {
+            if purchaseManager.canUpgradeToAnnual {
                 do {
                     let config = try await ZeroSettle.shared.fetchUpgradeOfferConfig(
                         productId: SubscriptionTier.yearly.productId,
@@ -203,7 +187,7 @@ struct SettingsView: View {
             "Cancel Subscription?",
             isPresented: $showFallbackCancel
         ) {
-            if iapManager.isStoreKitBilling {
+            if purchaseManager.isStoreKitBilling {
                 Button("Manage in Settings") {
                     Task { await openManageSubscriptions() }
                 }
@@ -215,7 +199,7 @@ struct SettingsView: View {
                 Button("Never mind", role: .cancel) {}
             }
         } message: {
-            if iapManager.isStoreKitBilling {
+            if purchaseManager.isStoreKitBilling {
                 Text("Your subscription is managed through Apple. You'll be taken to your subscription settings.")
             } else {
                 Text("Your subscription will remain active until the end of your current billing period.")
@@ -229,61 +213,6 @@ struct SettingsView: View {
         } message: {
             Text(errorMessage ?? "")
         }
-    }
-
-    // MARK: - Account Card
-
-    private var accountCard: some View {
-        VStack(spacing: 16) {
-            Image(systemName: authVM.currentUser?.avatarSystemName ?? "person.crop.circle.fill")
-                .font(.system(size: 48))
-                .foregroundStyle(LinearGradient.premiumGradient)
-
-            VStack(spacing: 4) {
-                Text(authVM.currentUser?.displayName ?? "User")
-                    .font(.title3.weight(.semibold))
-
-                if let email = authVM.currentUser?.email {
-                    Text(email)
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                }
-            }
-
-            if !habits.isEmpty {
-                Divider()
-
-                HStack(spacing: 0) {
-                    VStack(spacing: 2) {
-                        HStack(spacing: 4) {
-                            Image(systemName: "flame.fill")
-                                .font(.caption)
-                                .foregroundColor(.justWarning)
-                            Text("\(longestStreak)")
-                                .font(.title3.weight(.bold))
-                        }
-                        Text(longestStreak == 1 ? "week streak" : "week streak")
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
-                    }
-                    .frame(maxWidth: .infinity)
-
-                    Divider().frame(height: 36)
-
-                    VStack(spacing: 2) {
-                        Text("\(consistencyThisMonth)%")
-                            .font(.title3.weight(.bold))
-                            .foregroundColor(.justPrimary)
-                        Text("this month")
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
-                    }
-                    .frame(maxWidth: .infinity)
-                }
-            }
-        }
-        .padding(24)
-        .frame(maxWidth: .infinity)
     }
 
     // MARK: - Weekly Reflection Card
@@ -410,252 +339,6 @@ struct SettingsView: View {
         .glassCard()
     }
 
-    // MARK: - Subscription Card
-
-    private var subscriptionCard: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            if let tier = iapManager.activeSubscription {
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        HStack(spacing: 6) {
-                            Image(systemName: "crown.fill")
-                                .foregroundColor(.yellow)
-                            Text("JustOne Pro")
-                                .font(.title3.weight(.bold))
-                                .foregroundStyle(LinearGradient.premiumGradient)
-                        }
-
-                        Text("Unlimited streaks")
-                            .font(.subheadline)
-
-                        // Show actual price from catalog when on direct billing
-                        if !iapManager.isStoreKitBilling,
-                           let product = ZeroSettle.shared.product(for: tier.productId),
-                           let webPrice = product.webPrice {
-                            Text("\(tier.displayName) \u{00B7} \(webPrice.formatted)")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        } else {
-                            Text("\(tier.displayName) \u{00B7} \(tier.price)")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-                    }
-
-                    Spacer()
-
-                    VStack(spacing: 4) {
-                        if iapManager.isSubscriptionCancelled {
-                            Text("Cancelling")
-                                .font(.caption.weight(.semibold))
-                                .foregroundColor(.orange)
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 4)
-                                .background(Color.orange.opacity(0.12), in: Capsule())
-                        } else {
-                            Text("Active")
-                                .font(.caption.weight(.semibold))
-                                .foregroundColor(.justSuccess)
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 4)
-                                .background(Color.justSuccess.opacity(0.12), in: Capsule())
-                        }
-
-                        if !iapManager.isStoreKitBilling {
-                            Text("Direct billing")
-                                .font(.caption2)
-                                .foregroundColor(.secondary)
-                        }
-                    }
-                }
-
-                if iapManager.isSubscriptionCancelled {
-                    if let expiresAt = iapManager.subscriptionExpiresAt {
-                        HStack(spacing: 6) {
-                            Image(systemName: "clock")
-                                .foregroundColor(.orange)
-                            Text("Your subscription expires \(expiresAt, style: .date)")
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                        }
-                    }
-                } else {
-                    if iapManager.canUpgradeToAnnual && isUpgradeAvailable {
-                        Button { showAnnualUpgrade = true } label: {
-                            HStack {
-                                Image(systemName: "arrow.up.circle.fill")
-                                Text("Upgrade to Annual")
-                                    .fontWeight(.semibold)
-                            }
-                            .font(.subheadline)
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 44)
-                            .background(LinearGradient.premiumGradient, in: RoundedRectangle(cornerRadius: 12))
-                        }
-                    }
-
-                    HStack {
-                        if !iapManager.isAtHighestTier {
-                            Button { showPremiumUpsell = true } label: {
-                                Text("Change plan")
-                                    .font(.subheadline)
-                                    .foregroundColor(.justPrimary)
-                            }
-                        }
-
-                        Spacer()
-
-                        Button { showCancelFlow = true } label: {
-                            Text("Cancel")
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                        }
-                    }
-                }
-            } else {
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Free Plan")
-                            .font(.title3.weight(.bold))
-                        Text("1 habit limit")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                    Spacer()
-                }
-
-                Text("Upgrade to Pro for unlimited streaks, advanced analytics, and cloud sync (coming soon).")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-
-                Button { showPremiumUpsell = true } label: {
-                    HStack {
-                        Image(systemName: "crown.fill")
-                        Text("Upgrade to Pro")
-                            .fontWeight(.semibold)
-                    }
-                    .font(.subheadline)
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 48)
-                    .background(LinearGradient.premiumGradient, in: RoundedRectangle(cornerRadius: 14))
-                }
-            }
-        }
-        .padding(20)
-        .glassCard()
-    }
-
-    // MARK: - Streak Saver Card
-
-    private var streakSaverCard: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack {
-                Image(systemName: "bandage.fill")
-                    .foregroundColor(.justWarning)
-                Text("Streak Savers")
-                    .font(.headline)
-                Spacer()
-            }
-
-            Text("Protect a streak if you miss a day")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    if iapManager.hasUnlimitedStreakSavers {
-                        HStack(spacing: 6) {
-                            Image(systemName: "infinity")
-                                .font(.system(size: 28, weight: .bold))
-                                .foregroundColor(.justWarning)
-                            Text("Unlimited")
-                                .font(.system(size: 36, weight: .bold, design: .rounded))
-                                .foregroundColor(.justWarning)
-                        }
-                        Text("subscription active")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                    } else {
-                        Text("\(iapManager.streakSaverTokens)")
-                            .font(.system(size: 36, weight: .bold, design: .rounded))
-                            .foregroundColor(.justWarning)
-                        Text("tokens available")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                    }
-                }
-
-                Spacer()
-
-                if !iapManager.hasUnlimitedStreakSavers {
-                    Button { showConsumableShop = true } label: {
-                        HStack {
-                            Image(systemName: "plus.circle.fill")
-                            Text("Buy More")
-                                .fontWeight(.medium)
-                        }
-                        .font(.subheadline)
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 10)
-                        .background(Color.justWarning, in: Capsule())
-                    }
-                }
-            }
-        }
-        .padding(20)
-        .glassCard()
-    }
-
-    // MARK: - Reminder Card
-
-    private var reminderCard: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack {
-                Image(systemName: "bell.fill")
-                    .foregroundColor(.justPrimary)
-                Text("Reminders")
-                    .font(.headline)
-                Spacer()
-            }
-
-            Toggle("Daily reminder", isOn: $reminderEnabled)
-                .tint(.justPrimary)
-                .onChange(of: reminderEnabled) { _, enabled in
-                    UserDefaults.standard.set(enabled, forKey: NotificationKeys.reminderEnabled)
-                    if enabled {
-                        Task { await NotificationManager.shared.requestPermission() }
-                    } else {
-                        Task { await NotificationManager.shared.cancelReminder() }
-                    }
-                }
-
-            if reminderEnabled {
-                HStack {
-                    Text("Reminder time")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                    Spacer()
-                    DatePicker(
-                        "",
-                        selection: $reminderTime,
-                        displayedComponents: .hourAndMinute
-                    )
-                    .labelsHidden()
-                    .onChange(of: reminderTime) { _, newTime in
-                        let comps = Calendar.current.dateComponents([.hour, .minute], from: newTime)
-                        UserDefaults.standard.set(comps.hour ?? 20, forKey: NotificationKeys.reminderHour)
-                        UserDefaults.standard.set(comps.minute ?? 0, forKey: NotificationKeys.reminderMinute)
-                    }
-                }
-            }
-        }
-        .padding(20)
-        .glassCard()
-    }
-
     // MARK: - Support Section
 
     private var supportSection: some View {
@@ -663,9 +346,9 @@ struct SettingsView: View {
             Button {
                 Task {
                     do {
-                        try await iapManager.restorePurchases(userId: authVM.appleUserID)
+                        try await purchaseManager.restorePurchases(userId: authViewModel.appleUserID)
                         showRestoreConfirmation = true
-                    } catch where !ZeroSettleManager.isCancellation(error) {
+                    } catch where !ZeroSettleError.isCancellation(error) {
                         errorMessage = error.localizedDescription
                     }
                 }
@@ -674,7 +357,7 @@ struct SettingsView: View {
                     Image(systemName: "arrow.clockwise")
                     Text("Restore Purchases")
                     Spacer()
-                    if iapManager.isPurchasing {
+                    if purchaseManager.isPurchasing {
                         ProgressView()
                     }
                 }
@@ -683,12 +366,12 @@ struct SettingsView: View {
                 .padding(16)
                 .glassCard()
             }
-            .disabled(iapManager.isPurchasing)
+            .disabled(purchaseManager.isPurchasing)
 
             HStack {
                 Spacer()
                 VStack(spacing: 2) {
-                    if let joined = authVM.currentUser?.joinedAt {
+                    if let joined = authViewModel.currentUser?.joinedAt {
                         Text("Member since \(joined.formatted(.dateTime.month(.wide).year()))")
                             .font(.caption)
                             .foregroundColor(.secondary)
@@ -718,27 +401,16 @@ struct SettingsView: View {
 
     @MainActor
     private func cancelDirectBilling() async {
-        guard let tier = iapManager.activeSubscription,
-              let userId = authVM.appleUserID else { return }
+        guard let tier = purchaseManager.activeSubscription,
+              let userId = authViewModel.appleUserID else { return }
         do {
             try await ZeroSettle.shared.cancelSubscription(
                 productId: tier.productId,
                 userId: userId
             )
-            await iapManager.syncWithSDK(userId: userId)
+            await purchaseManager.syncWithSDK(userId: userId)
         } catch {
             errorMessage = "Failed to cancel: \(error.localizedDescription)"
-        }
-    }
-
-    private func detailRow(label: String, value: String) -> some View {
-        HStack {
-            Text(label)
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-            Spacer()
-            Text(value)
-                .font(.subheadline.weight(.medium))
         }
     }
 }

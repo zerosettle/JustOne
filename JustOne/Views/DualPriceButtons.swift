@@ -15,6 +15,7 @@ struct DualPriceButtons: View {
     let onWeb: () -> Void
     var isDisabled: Bool = false
     var isLoadingWeb: Bool = false
+    var isWebCheckoutEnabled: Bool = true
 
     var body: some View {
         HStack(spacing: 8) {
@@ -38,7 +39,8 @@ struct DualPriceButtons: View {
             .disabled(isDisabled)
 
             // Web button (gradient fill) — only shown when webPrice exists
-            if let webPrice {
+            // and web checkout is enabled for the user's jurisdiction
+            if let webPrice, isWebCheckoutEnabled {
                 Button(action: onWeb) {
                     VStack(spacing: 2) {
                         if isLoadingWeb {

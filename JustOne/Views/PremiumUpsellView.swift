@@ -10,8 +10,8 @@ import SwiftUI
 import ZeroSettleKit
 
 struct PremiumUpsellView: View {
-    @Environment(ZeroSettleManager.self) var iapManager
-    @Environment(AuthViewModel.self) var authVM
+    @Environment(PurchaseManager.self) var purchaseManager
+    @Environment(AuthViewModel.self) var authViewModel
     @Environment(\.dismiss) var dismiss
 
 
@@ -23,7 +23,7 @@ struct PremiumUpsellView: View {
     @Environment(\.scenePhase) private var scenePhase
 
     private var upgradeTiers: [SubscriptionTier] {
-        guard let current = iapManager.activeSubscription else {
+        guard let current = purchaseManager.activeSubscription else {
             return SubscriptionTier.paywallTiers
         }
         return SubscriptionTier.paywallTiers.filter { $0.rank > current.rank }
@@ -56,24 +56,38 @@ struct PremiumUpsellView: View {
         )
         .presentationDetents([.height(contentHeight)])
         .presentationDragIndicator(.visible)
+        // SDK PATTERN: trackEvent() for funnel analytics.
+        .onAppear {
+            ZeroSettle.trackEvent(.paywallViewed, productId: selectedTier.productId, screenName: "PremiumUpsellView")
+        }
+        .onDisappear {
+            if !purchaseManager.isPremium {
+                ZeroSettle.trackEvent(.checkoutAbandoned, productId: selectedTier.productId, screenName: "PremiumUpsellView")
+            }
+        }
+        // SDK PATTERN: Preload checkout WebView for instant opens.
+        // warmUp() creates a PaymentIntent and caches the WebView.
         .task {
             if let best = upgradeTiers.last {
                 selectedTier = best
             }
-            if let userId = authVM.appleUserID {
+            if let userId = authViewModel.appleUserID {
                 await CheckoutSheet.warmUp(productId: selectedTier.productId, userId: userId)
             }
         }
         .onChange(of: selectedTier) { _, newTier in
             Task {
-                if let userId = authVM.appleUserID {
+                if let userId = authViewModel.appleUserID {
                     await CheckoutSheet.warmUp(productId: newTier.productId, userId: userId)
                 }
             }
         }
+        // SDK PATTERN: .checkoutSheet presents web checkout overlay.
+        // Each view has its own .checkoutSheet because freeTrialDays, onComplete
+        // handlers, and header content differ per context.
         .checkoutSheet(
             item: $webCheckoutProduct,
-            userId: authVM.appleUserID ?? "",
+            userId: authViewModel.appleUserID ?? "",
             freeTrialDays: selectedTier.freeTrialDays,
             preload: .all,
             onPresent: { isLoadingWebCheckout = false }
@@ -84,7 +98,7 @@ struct PremiumUpsellView: View {
         } onComplete: { result in
             isLoadingWebCheckout = false
             Task {
-                let error = await iapManager.processWebCheckout(result, userId: authVM.appleUserID)
+                let error = await purchaseManager.processWebCheckout(result, userId: authViewModel.appleUserID)
                 if let error { errorMessage = error }
                 if case .success = result { dismiss() }
             }
@@ -119,10 +133,10 @@ struct PremiumUpsellView: View {
 
     private var titleSection: some View {
         VStack(spacing: 8) {
-            Text(iapManager.isPremium ? "Upgrade Your Plan" : "Go Pro")
+            Text(purchaseManager.isPremium ? "Upgrade Your Plan" : "Go Pro")
                 .font(.system(size: 28, weight: .bold, design: .rounded))
 
-            Text(iapManager.isPremium ? "Get more value with a longer billing cycle" : "Unlock everything")
+            Text(purchaseManager.isPremium ? "Get more value with a longer billing cycle" : "Unlock everything")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
         }
@@ -221,6 +235,7 @@ struct PremiumUpsellView: View {
             .shadow(color: .black.opacity(0.06), radius: 4, y: 2)
         }
         .buttonStyle(.plain)
+        .accessibilityLabel("\(tier.displayName) plan, \(tier.price)")
     }
 
     // MARK: - Free Trial Banner
@@ -240,6 +255,8 @@ struct PremiumUpsellView: View {
 
     // MARK: - Dual Price Buttons
 
+    // SDK PATTERN: DualPriceButtons shows StoreKit vs web pricing side-by-side.
+    // Web prices come from ZSProduct.webPrice, set by your backend.
     private var dualPriceButtons: some View {
         let zsProduct = ZeroSettle.shared.product(for: selectedTier.productId)
         return DualPriceButtons(
@@ -247,23 +264,26 @@ struct PremiumUpsellView: View {
             webPrice: zsProduct?.webPrice?.formatted,
             savingsPercent: zsProduct?.savingsPercent,
             onStoreKit: {
+                ZeroSettle.trackEvent(.checkoutStarted, productId: selectedTier.productId, screenName: "PremiumUpsellView", metadata: ["path": "storekit"])
                 Task {
                     do {
-                        let success = try await iapManager.purchaseSubscription(selectedTier, userId: authVM.appleUserID)
+                        let success = try await purchaseManager.purchaseSubscription(selectedTier, userId: authViewModel.appleUserID)
                         if success { dismiss() }
-                    } catch where !ZeroSettleManager.isCancellation(error) {
+                    } catch where !ZeroSettleError.isCancellation(error) {
                         errorMessage = error.localizedDescription
                     }
                 }
             },
             onWeb: {
+                ZeroSettle.trackEvent(.checkoutStarted, productId: selectedTier.productId, screenName: "PremiumUpsellView", metadata: ["path": "web"])
                 if let zsProduct {
                     isLoadingWebCheckout = true
                     webCheckoutProduct = zsProduct
                 }
             },
-            isDisabled: iapManager.isPurchasing,
-            isLoadingWeb: isLoadingWebCheckout
+            isDisabled: purchaseManager.isPurchasing,
+            isLoadingWeb: isLoadingWebCheckout,
+            isWebCheckoutEnabled: ZeroSettle.shared.isWebCheckoutEnabled
         )
     }
 
@@ -274,8 +294,8 @@ struct PremiumUpsellView: View {
             Button("Restore Purchases") {
                 Task {
                     do {
-                        try await iapManager.restorePurchases(userId: authVM.appleUserID)
-                    } catch where !ZeroSettleManager.isCancellation(error) {
+                        try await purchaseManager.restorePurchases(userId: authViewModel.appleUserID)
+                    } catch where !ZeroSettleError.isCancellation(error) {
                         errorMessage = error.localizedDescription
                     }
                 }

@@ -33,6 +33,7 @@ final class MockNotificationScheduler: NotificationScheduling {
     }
 }
 
+@Suite("Notification scheduling with mock scheduler")
 struct NotificationManagerTests {
 
     @Test func scheduleReminderWithIncompleteHabits() async {

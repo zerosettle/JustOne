@@ -9,7 +9,7 @@ import SwiftUI
 import AuthenticationServices
 
 struct LoginView: View {
-    @Environment(AuthViewModel.self) var authVM
+    @Environment(AuthViewModel.self) var authViewModel
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
@@ -50,7 +50,7 @@ struct LoginView: View {
                     } onCompletion: { result in
                         switch result {
                         case .success(let authorization):
-                            authVM.handleAuthorization(authorization)
+                            authViewModel.handleAuthorization(authorization)
                         case .failure:
                             break
                         }

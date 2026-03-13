@@ -1,8 +1,8 @@
 //
-//  ZeroSettleManagerTests.swift
+//  PurchaseManagerTests.swift
 //  JustOneTests
 //
-//  Unit tests for ZeroSettleManager: token management, entitlement
+//  Unit tests for PurchaseManager: token management, entitlement
 //  resolution, and purchase gating logic.
 //
 
@@ -11,16 +11,18 @@ import Foundation
 @testable import JustOne
 import ZeroSettleKit
 
-struct ZeroSettleManagerTests {
+@Suite("PurchaseManager token management and entitlement resolution", .serialized)
+@MainActor
+struct PurchaseManagerTests {
 
     // MARK: - Helpers
 
     /// Creates a fresh manager and clears persisted state so tests are isolated.
-    private func makeManager() -> ZeroSettleManager {
-        // Clear UserDefaults keys that ZeroSettleManager reads on init
+    private func makeManager() -> PurchaseManager {
+        // Clear UserDefaults keys that PurchaseManager reads on init
         UserDefaults.standard.removeObject(forKey: "streakSaverTokens")
         UserDefaults.standard.removeObject(forKey: "knownEntitlementIds")
-        return ZeroSettleManager()
+        return PurchaseManager()
     }
 
     /// Creates a mock entitlement for testing resolution logic.
@@ -54,7 +56,7 @@ struct ZeroSettleManagerTests {
 
     @Test func initialTokensReadFromUserDefaults() {
         UserDefaults.standard.set(5, forKey: "streakSaverTokens")
-        let manager = ZeroSettleManager()
+        let manager = PurchaseManager()
         #expect(manager.streakSaverTokens == 5)
         // Cleanup
         UserDefaults.standard.removeObject(forKey: "streakSaverTokens")
@@ -109,13 +111,13 @@ struct ZeroSettleManagerTests {
     // MARK: - resolveActiveSubscription
 
     @Test func resolveActiveSubscriptionReturnsNilWithNoEntitlements() {
-        let result = ZeroSettleManager.resolveActiveSubscription(from: [])
+        let result = PurchaseManager.resolveActiveSubscription(from: [])
         #expect(result == nil)
     }
 
     @Test func resolveActiveSubscriptionReturnsMatchingTier() {
         let entitlements = [mockEntitlement(productId: SubscriptionTier.monthly.productId)]
-        let result = ZeroSettleManager.resolveActiveSubscription(from: entitlements)
+        let result = PurchaseManager.resolveActiveSubscription(from: entitlements)
         #expect(result == .monthly)
     }
 
@@ -124,7 +126,7 @@ struct ZeroSettleManagerTests {
             mockEntitlement(productId: SubscriptionTier.weekly.productId),
             mockEntitlement(productId: SubscriptionTier.yearly.productId),
         ]
-        let result = ZeroSettleManager.resolveActiveSubscription(from: entitlements)
+        let result = PurchaseManager.resolveActiveSubscription(from: entitlements)
         #expect(result == .yearly)
     }
 
@@ -135,34 +137,33 @@ struct ZeroSettleManagerTests {
             mockEntitlement(productId: SubscriptionTier.weekly.productId, isActive: true),
         ]
         let active = all.filter(\.isActive)
-        let result = ZeroSettleManager.resolveActiveSubscription(from: active)
+        let result = PurchaseManager.resolveActiveSubscription(from: active)
         #expect(result == .weekly)
     }
 
-    @Test func resolveActiveSubscriptionForAllTiers() {
-        for tier in SubscriptionTier.allCases {
-            let entitlements = [mockEntitlement(productId: tier.productId)]
-            let result = ZeroSettleManager.resolveActiveSubscription(from: entitlements)
-            #expect(result == tier, "Should resolve \(tier)")
-        }
+    @Test("Resolves active subscription for each tier", arguments: SubscriptionTier.allCases)
+    func resolveActiveSubscriptionForTier(_ tier: SubscriptionTier) {
+        let entitlements = [mockEntitlement(productId: tier.productId)]
+        let result = PurchaseManager.resolveActiveSubscription(from: entitlements)
+        #expect(result == tier)
     }
 
     // MARK: - resolveBillingProvider
 
     @Test func resolveBillingProviderStoreKit() {
         let entitlements = [mockEntitlement(productId: SubscriptionTier.monthly.productId, source: .storeKit)]
-        let result = ZeroSettleManager.resolveBillingProvider(subscription: .monthly, entitlements: entitlements)
+        let result = PurchaseManager.resolveBillingProvider(subscription: .monthly, entitlements: entitlements)
         #expect(result == .storeKit)
     }
 
     @Test func resolveBillingProviderDirect() {
         let entitlements = [mockEntitlement(productId: SubscriptionTier.monthly.productId, source: .webCheckout)]
-        let result = ZeroSettleManager.resolveBillingProvider(subscription: .monthly, entitlements: entitlements)
+        let result = PurchaseManager.resolveBillingProvider(subscription: .monthly, entitlements: entitlements)
         #expect(result == .direct)
     }
 
     @Test func resolveBillingProviderNilWhenNoSubscription() {
-        let result = ZeroSettleManager.resolveBillingProvider(subscription: nil, entitlements: [])
+        let result = PurchaseManager.resolveBillingProvider(subscription: nil, entitlements: [])
         #expect(result == nil)
     }
 

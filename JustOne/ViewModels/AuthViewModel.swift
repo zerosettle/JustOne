@@ -117,3 +117,28 @@ class AuthViewModel {
         return try? JSONDecoder().decode(User.self, from: data)
     }
 }
+
+// MARK: - Debug Account Switching
+
+#if DEBUG
+extension AuthViewModel {
+    /// Signs in with a synthetic user ID (bypasses Sign in with Apple).
+    func debugSignIn(userId: String, label: String) {
+        if let data = userId.data(using: .utf8) {
+            KeychainHelper.save(data, for: Self.appleUserIDKey)
+        }
+
+        let existing = loadUserFromDefaults()
+        let user = User(
+            id: existing?.id ?? UUID(),
+            displayName: label,
+            email: nil,
+            avatarSystemName: "person.crop.circle.fill",
+            joinedAt: existing?.joinedAt ?? Date()
+        )
+        saveUserToDefaults(user)
+        currentUser = user
+        isAuthenticated = true
+    }
+}
+#endif

@@ -114,6 +114,25 @@ struct SettingsView: View {
                     streakSaverCard
                     reminderCard
                     supportSection
+
+                    #if DEBUG
+                    NavigationLink {
+                        DebugSettingsView()
+                    } label: {
+                        HStack {
+                            Image(systemName: "wrench.and.screwdriver")
+                                .foregroundColor(.orange)
+                            Text("Debug Environment")
+                                .font(.subheadline)
+                            Spacer()
+                            Text("\(DebugEnvironment.server.displayName) · \(DebugEnvironment.mode.displayName)")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        .padding(16)
+                        .glassCard()
+                    }
+                    #endif
                 }
                 .padding(.horizontal, 20)
                 .padding(.vertical, 16)

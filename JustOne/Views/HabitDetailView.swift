@@ -25,6 +25,8 @@ struct HabitDetailView: View {
     @State private var showEditJourney = false
     @State private var showConvertToJourney = false
     @State private var showDeleteConfirm = false
+    @State private var showRenameAlert = false
+    @State private var renameText = ""
 
     private var habitHistoryWeeksLabel: Int {
         let calendar = Calendar.current
@@ -62,11 +64,18 @@ struct HabitDetailView: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
+                    Button {
+                        renameText = habit.name
+                        showRenameAlert = true
+                    } label: {
+                        Label("Rename", systemImage: "pencil")
+                    }
+
                     if habit.isJourney {
                         Button {
                             showEditJourney = true
                         } label: {
-                            Label("Edit Journey", systemImage: "pencil")
+                            Label("Edit Journey", systemImage: "pencil.line")
                         }
 
                         Button {
@@ -201,6 +210,16 @@ struct HabitDetailView: View {
             }
         } message: {
             Text("This will permanently delete this habit and all its history. This cannot be undone.")
+        }
+        .alert("Rename Habit", isPresented: $showRenameAlert) {
+            TextField("Habit name", text: $renameText)
+            Button("Save") {
+                let trimmed = renameText.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !trimmed.isEmpty {
+                    habit.name = trimmed
+                }
+            }
+            Button("Cancel", role: .cancel) {}
         }
     }
 

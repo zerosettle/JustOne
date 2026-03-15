@@ -259,19 +259,21 @@ final class PurchaseManager {
 // checkout sheet. Use alongside @Observable and entitlementUpdates for
 // complete observability of the purchase flow.
 extension PurchaseManager: ZeroSettleDelegate {
+    private nonisolated static let delegateLogger = Logger(subsystem: "io.zerosettle.JustOne", category: "IAP")
+
     nonisolated func zeroSettleDidPresentCheckout(productId: String) {
-        AppLogger.iap.info("[Delegate] Checkout presented for \(productId)")
+        Self.delegateLogger.info("[Delegate] Checkout presented for \(productId)")
     }
 
     nonisolated func zeroSettleDidDismissCheckout(productId: String) {
-        AppLogger.iap.info("[Delegate] Checkout dismissed for \(productId)")
+        Self.delegateLogger.info("[Delegate] Checkout dismissed for \(productId)")
     }
 
     nonisolated func zeroSettleDidCompleteCheckout(productId: String) {
-        AppLogger.iap.info("[Delegate] Checkout completed for \(productId)")
+        Self.delegateLogger.info("[Delegate] Checkout completed for \(productId)")
     }
 
     nonisolated func zeroSettleDidFailCheckout(productId: String, error: Error) {
-        AppLogger.iap.error("[Delegate] Checkout failed for \(productId): \(error)")
+        Self.delegateLogger.error("[Delegate] Checkout failed for \(productId): \(error)")
     }
 }

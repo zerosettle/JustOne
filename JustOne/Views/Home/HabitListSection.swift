@@ -13,12 +13,13 @@ import UIKit
 struct HabitListSection: View {
     let visibleHabits: [Habit]
     let archivedHabits: [Habit]
-    let activeHabits: [Habit]
     let showArchived: Bool
+    var isReordering: Bool = false
     @Binding var showPremiumUpsell: Bool
     @Binding var navigatingHabit: Habit?
     @Binding var levelUpHabit: Habit?
     @Binding var habitToDelete: Habit?
+    var onMoveHabit: (IndexSet, Int) -> Void = { _, _ in }
     @Environment(PurchaseManager.self) private var purchaseManager
 
     /// The habits to display based on the current filter.
@@ -29,6 +30,16 @@ struct HabitListSection: View {
     /// The user's oldest visible habit — the one free slot.
     private var oldestVisibleHabit: Habit? {
         visibleHabits.min(by: { $0.createdAt < $1.createdAt })
+    }
+
+    /// The first incomplete, non-locked active habit — highlighted as "next up" in the stack.
+    /// Only shown when the user has customized sort order (at least one non-zero sortOrder).
+    private var nextUpHabitID: UUID? {
+        guard !showArchived,
+              displayedHabits.contains(where: { $0.sortOrder != 0 }) else { return nil }
+        return displayedHabits.first(where: {
+            $0.status == .active && !$0.isCompleted(on: Date()) && !isHabitLocked($0)
+        })?.id
     }
 
     /// Returns `true` when the habit should be locked for non-premium users.
@@ -70,6 +81,7 @@ struct HabitListSection: View {
             ForEach(displayedHabits) { habit in
                 habitRow(habit)
             }
+            .onMove(perform: isReordering && !showArchived ? onMoveHabit : nil)
 
             if !showArchived && !purchaseManager.isPremium {
                 lockedHabitCard
@@ -94,6 +106,7 @@ struct HabitListSection: View {
             HabitRowView(
                 habit: habit,
                 isLocked: isHabitLocked(habit),
+                isNextUp: habit.id == nextUpHabitID,
                 onToggleToday: {
                     guard !isHabitLocked(habit) else { return }
                     guard habit.status == .active else { return }
@@ -133,8 +146,9 @@ struct HabitListSection: View {
             )
         }
         .buttonStyle(LiquidPressStyle())
+        .moveDisabled(!isReordering)
         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-            if !isHabitLocked(habit) {
+            if !isHabitLocked(habit) && !isReordering {
                 Button {
                     habitToDelete = habit
                 } label: {
@@ -160,7 +174,7 @@ struct HabitListSection: View {
             }
         }
         .swipeActions(edge: .leading, allowsFullSwipe: true) {
-            if !isHabitLocked(habit) && !showArchived {
+            if !isHabitLocked(habit) && !showArchived && !isReordering {
                 if habit.status == .paused {
                     Button {
                         habit.status = .active

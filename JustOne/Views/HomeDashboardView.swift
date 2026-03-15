@@ -28,21 +28,22 @@ struct HomeDashboardView: View {
     @State private var statsSheetMode: StatsSheetMode?
     @State private var showArchived = false
     @State private var showPreviousDayCatchUp = false
+    @State private var isReordering = false
     @Environment(\.scenePhase) private var scenePhase
 
     /// Habits visible on the home screen (active + paused). Excludes archived.
     private var visibleHabits: [Habit] {
-        habits.filter { $0.status != .archived }
+        habits.filter { $0.status != .archived }.sortedByStack()
     }
 
     /// Only active habits — used for stats, heatmap, and greeting.
     private var activeHabits: [Habit] {
-        habits.filter { $0.status == .active }
+        habits.filter { $0.status == .active }.sortedByStack()
     }
 
     /// Archived habits — shown when the archive filter is active.
     private var archivedHabits: [Habit] {
-        habits.filter { $0.status == .archived }
+        habits.filter { $0.status == .archived }.sortedByStack()
     }
 
     // MARK: - Body
@@ -70,12 +71,13 @@ struct HomeDashboardView: View {
                     HabitListSection(
                         visibleHabits: visibleHabits,
                         archivedHabits: archivedHabits,
-                        activeHabits: activeHabits,
                         showArchived: showArchived,
+                        isReordering: isReordering,
                         showPremiumUpsell: $showPremiumUpsell,
                         navigatingHabit: $navigatingHabit,
                         levelUpHabit: $levelUpHabit,
-                        habitToDelete: $habitToDelete
+                        habitToDelete: $habitToDelete,
+                        onMoveHabit: moveHabit
                     )
                 }
                 .listStyle(.plain)
@@ -123,6 +125,18 @@ struct HomeDashboardView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     HStack(spacing: 16) {
+                        if !showArchived && visibleHabits.count > 1 {
+                            Button {
+                                withAnimation(.easeInOut(duration: 0.25)) {
+                                    isReordering.toggle()
+                                }
+                            } label: {
+                                Image(systemName: isReordering ? "checkmark" : "arrow.up.arrow.down")
+                                    .foregroundColor(isReordering ? .justSuccess : .secondary)
+                                    .accessibilityLabel(isReordering ? "Done reordering" : "Reorder habits")
+                            }
+                        }
+
                         if !archivedHabits.isEmpty {
                             Button {
                                 withAnimation(.easeInOut(duration: 0.25)) {
@@ -147,6 +161,11 @@ struct HomeDashboardView: View {
                     withAnimation(.easeInOut(duration: 0.25)) {
                         showArchived = false
                     }
+                }
+            }
+            .onChange(of: showArchived) { _, archived in
+                if archived && isReordering {
+                    isReordering = false
                 }
             }
             .navigationDestination(item: $navigatingHabit) { habit in
@@ -200,6 +219,16 @@ struct HomeDashboardView: View {
         }
     }
 
+    // MARK: - Reorder
+
+    private func moveHabit(from source: IndexSet, to destination: Int) {
+        var ordered = visibleHabits
+        ordered.move(fromOffsets: source, toOffset: destination)
+        for (index, habit) in ordered.enumerated() {
+            habit.sortOrder = index
+        }
+    }
+
     // MARK: - Foreground Lifecycle
 
     private func handleForegroundEntry() {
@@ -212,6 +241,14 @@ struct HomeDashboardView: View {
                     incompleteCount: incompleteCount,
                     at: time
                 )
+            }
+        }
+
+        // Check HealthKit triggers for auto-completion
+        let healthKitHabits = activeHabits.filter { $0.healthKitTrigger != nil }
+        if !healthKitHabits.isEmpty && HealthKitManager.isAvailable {
+            Task {
+                await HealthKitManager.shared.checkAllTriggers(for: healthKitHabits)
             }
         }
 

@@ -74,12 +74,11 @@ struct ConsumableShopView: View {
                 }
             }
             // SDK PATTERN: .checkoutSheet with onPresent callback clears loading state.
-            // Each view has its own .checkoutSheet because freeTrialDays and
-            // onComplete handlers differ per context.
+            // Each view has its own .checkoutSheet because onComplete handlers
+            // differ per context. Free trials are configured server-side.
             .checkoutSheet(
                 item: $webCheckoutProduct,
                 userId: authViewModel.appleUserID ?? "",
-                freeTrialDays: selection?.freeTrialDays ?? 0,
                 preload: .all,
                 onPresent: { isLoadingWebCheckout = false }
             ) {

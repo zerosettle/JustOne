@@ -22,6 +22,12 @@ extension Habit {
         return true
     }
 
+    /// Auto-complete via HealthKit and tell WidgetKit to refresh.
+    func markAutoCompletedAndReloadWidget(on date: Date) {
+        markAutoCompleted(on: date)
+        WidgetCenter.shared.reloadAllTimelines()
+    }
+
     /// Toggle completion and tell WidgetKit to refresh.
     func toggleCompletionAndReloadWidget(on date: Date) {
         toggleCompletion(on: date)

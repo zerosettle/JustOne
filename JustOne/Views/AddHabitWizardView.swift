@@ -15,6 +15,7 @@ import UIKit
 struct AddHabitWizardView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) var dismiss
+    @Query var existingHabits: [Habit]
 
     // Edit mode: pre-populate from existing habit
     var editingHabit: Habit? = nil
@@ -854,6 +855,7 @@ struct AddHabitWizardView: View {
             if isCustomColor {
                 habit.customColorHex = customColor.toHex()
             }
+            habit.sortOrder = Habit.nextSortOrder(in: existingHabits)
             modelContext.insert(habit)
             dismiss()
         }

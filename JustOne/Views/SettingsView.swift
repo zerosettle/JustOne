@@ -133,12 +133,11 @@ struct SettingsView: View {
             Text("Your purchases have been restored successfully.")
         }
         // SDK PATTERN: .checkoutSheet presents web checkout overlay.
-        // This instance uses migration-specific freeTrialDays and tracks
-        // Switch & Save conversion on success.
+        // This instance tracks Switch & Save conversion on success.
+        // Free trials are configured server-side.
         .checkoutSheet(
             item: $webCheckoutProduct,
             userId: authViewModel.appleUserID ?? "",
-            freeTrialDays: ZeroSettle.shared.migrationManager?.offerData?.freeTrialDays ?? 0,
             preload: .all
         ) {
             if let product = webCheckoutProduct {
@@ -379,9 +378,6 @@ struct SettingsView: View {
                     Text("JustOne v1.0")
                         .font(.caption)
                         .foregroundColor(.secondary)
-                    Text("Powered by ZeroSettle")
-                        .font(.caption2)
-                        .foregroundColor(.secondary.opacity(0.6))
                 }
                 Spacer()
             }

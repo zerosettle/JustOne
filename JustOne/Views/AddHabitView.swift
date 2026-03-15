@@ -12,6 +12,7 @@ import SwiftData
 struct AddHabitView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) var dismiss
+    @Query var existingHabits: [Habit]
 
     @State private var name = ""
     @State private var selectedIcon = "star.fill"
@@ -20,6 +21,9 @@ struct AddHabitView: View {
     @State private var isCustomColor = false
     @State private var frequencyPerWeek = 3
     @State private var isInverse = false
+    @State private var healthKitEnabled = false
+    @State private var healthKitTriggerType: HealthKitTriggerType = .steps
+    @State private var healthKitThreshold: Double = 10_000
     @FocusState private var isNameFocused: Bool
 
     private var effectiveColor: Color {
@@ -45,6 +49,7 @@ struct AddHabitView: View {
                     colorPicker
                     if !isInverse {
                         frequencyPicker
+                        healthKitSection
                     }
                 }
                 .padding(20)
@@ -74,6 +79,12 @@ struct AddHabitView: View {
                         if isCustomColor {
                             habit.customColorHex = customColor.toHex()
                         }
+                        if healthKitEnabled && !isInverse {
+                            let trigger = HealthKitTrigger(triggerType: healthKitTriggerType, threshold: healthKitThreshold)
+                            habit.healthKitTrigger = trigger
+                            Task { await HealthKitManager.shared.requestAuthorization(for: trigger) }
+                        }
+                        habit.sortOrder = Habit.nextSortOrder(in: existingHabits)
                         modelContext.insert(habit)
                         requestNotificationPermissionIfNeeded()
                         dismiss()
@@ -307,6 +318,33 @@ struct AddHabitView: View {
             .padding(16)
             .glassCard()
         }
+    }
+
+    // MARK: - HealthKit Section
+
+    private var healthKitSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Toggle(isOn: $healthKitEnabled.animation(.easeInOut(duration: 0.25))) {
+                HStack(spacing: 8) {
+                    Image(systemName: "heart.fill")
+                        .foregroundColor(.pink)
+                    Text("Link to Health Data")
+                        .font(.subheadline.weight(.semibold))
+                }
+            }
+            .tint(effectiveColor)
+
+            if healthKitEnabled {
+                HealthKitTriggerPicker(
+                    triggerType: $healthKitTriggerType,
+                    threshold: $healthKitThreshold,
+                    accentColor: effectiveColor
+                )
+                .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+        }
+        .padding(16)
+        .glassCard()
     }
 
     // MARK: - Notification Permission

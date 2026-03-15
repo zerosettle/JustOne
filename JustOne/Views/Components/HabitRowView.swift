@@ -12,11 +12,16 @@ import SwiftUI
 struct HabitRowView: View {
     let habit: Habit
     var isLocked: Bool = false
+    var isNextUp: Bool = false
     var onToggleToday: () -> Void = {}
     var onAffirmToday: (() -> Void)? = nil
     var onSlipToday: (() -> Void)? = nil
 
     private let today = Date()
+
+    private var isAutoCompletedToday: Bool {
+        isAutoCompletedToday
+    }
 
     var body: some View {
         HStack(spacing: 16) {
@@ -38,6 +43,15 @@ struct HabitRowView: View {
                     Text("Paused")
                         .font(.caption)
                         .foregroundColor(.secondary)
+                } else if isAutoCompletedToday {
+                    HStack(spacing: 4) {
+                        Image(systemName: "heart.fill")
+                            .font(.caption2)
+                            .foregroundColor(.pink)
+                        Text("Auto-logged")
+                            .font(.caption)
+                            .foregroundColor(.pink)
+                    }
                 } else if habit.isInverse {
                     let slips = habit.slipCount()
                     Text("\(slips) slip-up\(slips == 1 ? "" : "s") this week")
@@ -68,9 +82,18 @@ struct HabitRowView: View {
                     Button {
                         onToggleToday()
                     } label: {
-                        Image(systemName: toggleIconName)
-                            .font(.system(size: 28))
-                            .foregroundColor(toggleIconColor)
+                        ZStack(alignment: .bottomTrailing) {
+                            Image(systemName: toggleIconName)
+                                .font(.system(size: 28))
+                                .foregroundColor(toggleIconColor)
+
+                            if isAutoCompletedToday {
+                                Image(systemName: "heart.fill")
+                                    .font(.system(size: 10))
+                                    .foregroundColor(.pink)
+                                    .offset(x: 2, y: 2)
+                            }
+                        }
                     }
                     .buttonStyle(.borderless)
                     .accessibilityLabel(habit.isCompleted(on: today)
@@ -86,6 +109,17 @@ struct HabitRowView: View {
         }
         .padding(16)
         .glassCard()
+        .overlay {
+            if isNextUp {
+                ZStack(alignment: .leading) {
+                    RoundedRectangle(cornerRadius: 20)
+                        .stroke(habit.displayColor.opacity(0.3), lineWidth: 1)
+                    RoundedRectangle(cornerRadius: 20)
+                        .fill(habit.displayColor)
+                        .frame(width: 4)
+                }
+            }
+        }
         .opacity(isLocked || habit.status == .paused ? 0.55 : 1.0)
     }
 

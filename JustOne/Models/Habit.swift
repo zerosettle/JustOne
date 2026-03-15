@@ -11,6 +11,15 @@
 import SwiftUI
 import SwiftData
 
+// MARK: - Sorting
+
+extension Sequence where Element: Habit {
+    /// Sort habits by user-defined stack order, then by creation date.
+    func sortedByStack() -> [Habit] {
+        sorted { ($0.sortOrder, $0.createdAt) < ($1.sortOrder, $1.createdAt) }
+    }
+}
+
 // MARK: - Habit Status
 
 enum HabitStatus: String, Codable, CaseIterable, Identifiable {
@@ -58,6 +67,20 @@ class Habit {
     /// When true, the habit tracks failures ("slip-ups") instead of completions.
     /// `completedDates` stores dates the user *slipped*, and `isCompleted(on:)` inverts.
     var isInverse: Bool = false
+
+    /// User-defined position in the habit stack. Lower values appear first.
+    var sortOrder: Int = 0
+
+    /// Next available sortOrder for a new habit in the given collection.
+    static func nextSortOrder(in habits: [Habit]) -> Int {
+        (habits.map(\.sortOrder).max() ?? -1) + 1
+    }
+
+    /// HealthKit trigger for auto-completion. Nil means no HealthKit link.
+    var healthKitTrigger: HealthKitTrigger?
+
+    /// Dates that were auto-completed by HealthKit (subset of completedDates).
+    var autoCompletedDates: [String] = []
 
     /// Hex color string for user-picked custom colors. When set, takes priority over `accentColor`.
     var customColorHex: String?
@@ -198,12 +221,50 @@ class Habit {
 
     var totalCompletions: Int { completedDates.count }
 
+    // MARK: - Auto-Completion Queries
+
+    @Transient private var _autoCompletedDatesSet: Set<String>?
+
+    private func autoCompletedDatesSet() -> Set<String> {
+        if let cached = _autoCompletedDatesSet { return cached }
+        let set = Set(autoCompletedDates)
+        _autoCompletedDatesSet = set
+        return set
+    }
+
+    func invalidateAutoCompletedDatesCache() {
+        _autoCompletedDatesSet = nil
+    }
+
+    func isAutoCompleted(on date: Date) -> Bool {
+        autoCompletedDatesSet().contains(Self.dateKey(for: date))
+    }
+
+    /// Mark a habit as auto-completed by HealthKit. Adds to both completedDates and autoCompletedDates.
+    func markAutoCompleted(on date: Date) {
+        let key = Self.dateKey(for: date)
+        if !completedDates.contains(key) {
+            completedDates.append(key)
+            invalidateCompletedDatesCache()
+        }
+        if !autoCompletedDates.contains(key) {
+            autoCompletedDates.append(key)
+            invalidateAutoCompletedDatesCache()
+        }
+    }
+
     // MARK: - Mutations
 
     func toggleCompletion(on date: Date) {
         let key = Self.dateKey(for: date)
         if let index = completedDates.firstIndex(of: key) {
             completedDates.remove(at: index)
+            // Keep autoCompletedDates subset invariant: if manually un-completed,
+            // also remove from autoCompletedDates so HealthKit can re-trigger.
+            if let autoIndex = autoCompletedDates.firstIndex(of: key) {
+                autoCompletedDates.remove(at: autoIndex)
+                invalidateAutoCompletedDatesCache()
+            }
         } else {
             completedDates.append(key)
         }

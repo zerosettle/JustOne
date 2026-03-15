@@ -83,12 +83,11 @@ struct PremiumUpsellView: View {
             }
         }
         // SDK PATTERN: .checkoutSheet presents web checkout overlay.
-        // Each view has its own .checkoutSheet because freeTrialDays, onComplete
-        // handlers, and header content differ per context.
+        // Each view has its own .checkoutSheet because onComplete handlers
+        // and header content differ per context. Free trials are configured server-side.
         .checkoutSheet(
             item: $webCheckoutProduct,
             userId: authViewModel.appleUserID ?? "",
-            freeTrialDays: selectedTier.freeTrialDays,
             preload: .all,
             onPresent: { isLoadingWebCheckout = false }
         ) {
@@ -303,7 +302,7 @@ struct PremiumUpsellView: View {
             .font(.caption)
             .foregroundColor(.secondary)
 
-            Text("Cancel anytime \u{00B7} Powered by ZeroSettle")
+            Text("Cancel anytime")
                 .font(.caption2)
                 .foregroundColor(.secondary.opacity(0.6))
         }

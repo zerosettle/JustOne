@@ -21,10 +21,11 @@ struct JustOneApp: App {
         // In debug builds, DebugEnvironment handles server/mode selection.
 #if DEBUG
         DebugEnvironment.apply()
+        ZSOfferManager.resetDismissedState()
 #else
         let key = "zs_pk_live_2c44f5c468ff4907322a0f8825e976bce0a7be46571af88b"
         // Each preloaded WebView uses ~3-7 MB; nil = no limit, fine for small catalogs
-        ZeroSettle.shared.configure(.init(publishableKey: key, preloadCheckout: true, maxPreloadedWebViews: nil))
+        ZeroSettle.shared.configure(.init(publishableKey: key, preloadCheckout: false, maxPreloadedWebViews: nil))
 #endif
     }
 
@@ -42,7 +43,17 @@ struct JustOneApp: App {
                 .task(id: authViewModel.isAuthenticated) {
                     if authViewModel.isAuthenticated, let userId = authViewModel.appleUserID {
                         do {
-                            let catalog = try await ZeroSettle.shared.bootstrap(userId: userId)
+                            let name = authViewModel.currentUser?.displayName
+                            let email = authViewModel.currentUser?.email
+                                ?? name.flatMap { n in
+                                    let parts = n.lowercased().split(separator: " ")
+                                    return parts.isEmpty || n == "Friend" ? nil : parts.joined(separator: "") + "@gmail.com"
+                                }
+                            let catalog = try await ZeroSettle.shared.bootstrap(
+                                userId: userId,
+                                name: name == "Friend" ? nil : name,
+                                email: email
+                            )
                             AppLogger.iap.info("Bootstrap succeeded — \(catalog.products.count) products")
                             for p in ZeroSettle.shared.products {
                                 AppLogger.iap.info("  \(p.id): storeKit=\(p.storeKitPrice?.formatted ?? "nil"), web=\(p.webPrice?.formatted ?? "nil"), savings=\(p.savingsPercent.map(String.init) ?? "nil"), trial=\(p.freeTrialDuration ?? "nil"), trialEligible=\(p.isTrialEligible.map(String.init) ?? "nil")")

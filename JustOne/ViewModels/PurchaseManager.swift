@@ -193,8 +193,8 @@ final class PurchaseManager {
         let storeKit = isStoreKitBilling
         let tierName = activeSubscription?.displayName ?? "none"
         let billingName = billingProvider == .storeKit ? "storeKit" : billingProvider == .direct ? "direct" : "none"
-        let migrationState = ZeroSettle.shared.migrationManager.map { String(describing: $0.state) } ?? "nil"
-        let hasOffer = ZeroSettle.shared.migrationManager?.offerData != nil
+        let offerState = ZeroSettle.shared.offerManager.map { String(describing: $0.state) } ?? "nil"
+        let hasOffer = ZeroSettle.shared.offerManager?.offerData != nil
 
         let entitlementSummary = ZeroSettle.shared.activeEntitlements.map {
             "[\($0.productId) source=\($0.source) id=\($0.id)]"
@@ -204,7 +204,7 @@ final class PurchaseManager {
             [Switch & Save] isPremium=\(premium), \
             tier=\(tierName), \
             billing=\(billingName), \
-            migrationState=\(migrationState), \
+            offerState=\(offerState), \
             hasOffer=\(hasOffer), \
             bannerEligible=\(premium && storeKit), \
             entitlements=[\(entitlementSummary)]
@@ -230,6 +230,18 @@ final class PurchaseManager {
             await syncWithSDK(userId: userId)
         }
     }
+
+    // MARK: - Debug Reset
+
+    #if DEBUG
+    /// Zeros streak saver tokens and clears known entitlement IDs.
+    /// Computed entitlement properties auto-update after the next bootstrap.
+    func debugReset() {
+        streakSaverTokens = 0
+        persistTokens()
+        UserDefaults.standard.removeObject(forKey: Self.knownEntitlementIdsKey)
+    }
+    #endif
 
     // MARK: - Private — Purchase
 

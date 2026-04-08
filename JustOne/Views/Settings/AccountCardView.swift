@@ -11,6 +11,7 @@ import SwiftUI
 struct AccountCardView: View {
     let user: User?
     let habits: [Habit]
+    var zeroSettleUserId: String?
 
     private var longestStreak: Int {
         habits.map(\.currentStreak).max() ?? 0
@@ -56,6 +57,15 @@ struct AccountCardView: View {
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                 }
+
+                #if DEBUG
+                if let zsId = zeroSettleUserId {
+                    Text(zsId)
+                        .font(.caption.monospaced())
+                        .foregroundColor(.secondary)
+                        .textSelection(.enabled)
+                }
+                #endif
             }
 
             if !habits.isEmpty {

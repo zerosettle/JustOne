@@ -100,6 +100,11 @@ struct HabitRowView: View {
                         ? "Mark \(habit.name) incomplete"
                         : "Mark \(habit.name) complete"
                     )
+                    .accessibilityHint(habit.isCompleted(on: today)
+                        ? "Double tap to unmark as complete"
+                        : "Double tap to mark as complete"
+                    )
+                    .accessibilityValue(habit.isCompleted(on: today) ? "Completed" : "Not completed")
                 }
             }
 
@@ -138,6 +143,8 @@ struct HabitRowView: View {
                     .foregroundColor(.justSuccess)
             }
             .buttonStyle(.borderless)
+            .accessibilityLabel("\(habit.name), affirmed today")
+            .accessibilityHint("Double tap to undo")
         } else if slipped {
             // Slipped state — tap to undo
             Button { onSlipToday?() } label: {
@@ -146,6 +153,8 @@ struct HabitRowView: View {
                     .foregroundColor(.justWarning)
             }
             .buttonStyle(.borderless)
+            .accessibilityLabel("\(habit.name), slip logged today")
+            .accessibilityHint("Double tap to undo")
         } else {
             // Not interacted — show side-by-side buttons
             HStack(spacing: 8) {
@@ -155,6 +164,8 @@ struct HabitRowView: View {
                         .foregroundColor(.secondary.opacity(0.4))
                 }
                 .buttonStyle(.borderless)
+                .accessibilityLabel("Log slip for \(habit.name)")
+                .accessibilityHint("Double tap to record a slip-up today")
 
                 Button { onAffirmToday?() } label: {
                     Image(systemName: "checkmark.shield.fill")
@@ -162,6 +173,8 @@ struct HabitRowView: View {
                         .foregroundColor(.justSuccess)
                 }
                 .buttonStyle(.borderless)
+                .accessibilityLabel("Affirm \(habit.name)")
+                .accessibilityHint("Double tap to mark today as clean")
             }
         }
     }

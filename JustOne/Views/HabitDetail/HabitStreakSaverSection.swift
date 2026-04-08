@@ -57,10 +57,12 @@ struct HabitStreakSaverControls: View {
                     }
                     .font(.subheadline.weight(.semibold))
                     .foregroundColor(.justSuccess)
+                    .accessibilityLabel("Unlimited streak savers")
                 } else {
                     Text("\(purchaseManager.streakSaverTokens) remaining")
                         .font(.subheadline.weight(.semibold))
                         .foregroundColor(.justPrimary)
+                        .accessibilityLabel("\(purchaseManager.streakSaverTokens) streak saver token\(purchaseManager.streakSaverTokens == 1 ? "" : "s") remaining")
                 }
             }
 
@@ -81,6 +83,7 @@ struct HabitStreakSaverControls: View {
                     .frame(height: 44)
                     .background(Color.justPrimary.opacity(0.10), in: RoundedRectangle(cornerRadius: 12))
                 }
+                .accessibilityHint("Opens the shop to purchase additional streak saver tokens")
             }
         }
         .padding(20)

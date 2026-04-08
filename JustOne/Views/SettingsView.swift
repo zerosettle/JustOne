@@ -211,6 +211,7 @@ struct SettingsView: View {
                             .font(.caption)
                             .foregroundColor(habit.displayColor)
                             .frame(width: 24, height: 24)
+                            .accessibilityHidden(true)
 
                         Text(habit.name)
                             .font(.subheadline)
@@ -221,6 +222,8 @@ struct SettingsView: View {
                             .font(.caption.weight(.semibold).monospacedDigit())
                             .foregroundColor(habit.weeklyProgress() >= 1.0 ? .justSuccess : .secondary)
                     }
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("\(habit.name), \(habit.completionsInWeek()) of \(habit.frequencyPerWeek) completions this week")
                 }
             }
         }
@@ -266,6 +269,7 @@ struct SettingsView: View {
                 .glassCard()
             }
             .disabled(purchaseManager.isPurchasing)
+            .accessibilityHint("Restores previous purchases from the App Store")
 
             HStack {
                 Spacer()

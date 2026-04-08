@@ -14,8 +14,11 @@ struct HabitStatsSection: View {
         VStack(spacing: 8) {
             HStack(spacing: 12) {
                 statCard(title: "Streak",  value: "\(habit.currentStreak)", unit: "weeks",     icon: "flame.fill",                     color: .justWarning)
+                    .accessibilityLabel("Streak, \(habit.currentStreak) week\(habit.currentStreak == 1 ? "" : "s")")
                 statCard(title: "Total",   value: "\(habit.totalCompletions)", unit: "days",   icon: "calendar",                       color: habit.displayColor)
+                    .accessibilityLabel("Total completions, \(habit.totalCompletions) day\(habit.totalCompletions == 1 ? "" : "s")")
                 statCard(title: "Rate",    value: "\(Int(habit.weeklyProgress() * 100))%", unit: "this week", icon: "chart.line.uptrend.xyaxis", color: .justSuccess)
+                    .accessibilityLabel("Completion rate, \(Int(habit.weeklyProgress() * 100)) percent this week")
             }
 
             if habit.currentStreak >= 4 {

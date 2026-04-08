@@ -153,6 +153,7 @@ struct HomeDashboardView: View {
                             Image(systemName: "person.circle")
                                 .foregroundColor(.justPrimary)
                         }
+                        .accessibilityLabel("Account")
                     }
                 }
             }

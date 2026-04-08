@@ -123,6 +123,7 @@ struct ShopPurchaseFooter: View {
                 .opacity(purchaseManager.isPurchasing ? 0.5 : 1.0)
             }
             .disabled(purchaseManager.isPurchasing)
+            .accessibilityLabel("Buy via App Store, \(zsProduct?.storeKitPrice?.formatted ?? selection.fallbackPrice)")
 
             // Pay Direct button (only when web price exists and web checkout is enabled)
             if let webPrice = zsProduct?.webPrice?.formatted, ZeroSettle.shared.isWebCheckoutEnabled {
@@ -185,6 +186,13 @@ struct ShopPurchaseFooter: View {
                     .opacity(purchaseManager.isPurchasing || isLoadingWebCheckout ? 0.7 : 1.0)
                 }
                 .disabled(purchaseManager.isPurchasing || isLoadingWebCheckout)
+                .accessibilityLabel({
+                    var label = "Buy direct, \(zsProduct?.webPrice?.formatted ?? selection.fallbackPrice)"
+                    if let savings = zsProduct?.savingsPercent, savings > 0 {
+                        label += ", save \(savings) percent"
+                    }
+                    return label
+                }())
             }
         }
     }

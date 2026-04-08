@@ -128,6 +128,7 @@ struct ShopConsumableRow: View {
             )
         }
         .buttonStyle(.plain)
+        .accessibilityLabel("\(product.displayName), \(product.tokenCount) token\(product.tokenCount == 1 ? "" : "s"), \(product.price)")
     }
 }
 

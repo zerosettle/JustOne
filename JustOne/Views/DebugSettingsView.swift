@@ -3,7 +3,7 @@
 //  JustOne
 //
 //  Debug-only view for switching ZeroSettleKit environments at runtime
-//  and managing synthetic test accounts.
+//  and managing synthetic test accounts sandboxed per environment.
 //
 
 #if DEBUG
@@ -16,21 +16,50 @@ struct DebugAccount: Codable, Identifiable, Equatable {
     let id: String          // synthetic userId (UUID string)
     var label: String
     let createdAt: Date
+    var envKey: String       // e.g. "staging_sandbox"
+
+    init(id: String, label: String, createdAt: Date, envKey: String) {
+        self.id = id
+        self.label = label
+        self.createdAt = createdAt
+        self.envKey = envKey
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        label = try container.decode(String.self, forKey: .label)
+        createdAt = try container.decode(Date.self, forKey: .createdAt)
+        envKey = try container.decodeIfPresent(String.self, forKey: .envKey) ?? "staging_sandbox"
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, label, createdAt, envKey
+    }
 }
 
 private enum DebugAccountStore {
-    private static let key = "debug_accounts"
+    private static let accountsKey = "debug_accounts"
+    private static let lastActiveKey = "debug_lastActiveAccount"
+
+    // MARK: - All Accounts
 
     static var all: [DebugAccount] {
         get {
-            guard let data = UserDefaults.standard.data(forKey: key) else { return [] }
+            guard let data = UserDefaults.standard.data(forKey: accountsKey) else { return [] }
             return (try? JSONDecoder().decode([DebugAccount].self, from: data)) ?? []
         }
         set {
             if let data = try? JSONEncoder().encode(newValue) {
-                UserDefaults.standard.set(data, forKey: key)
+                UserDefaults.standard.set(data, forKey: accountsKey)
             }
         }
+    }
+
+    // MARK: - Per-Environment Filtering
+
+    static func accounts(for envKey: String) -> [DebugAccount] {
+        all.filter { $0.envKey == envKey }
     }
 
     static func add(_ account: DebugAccount) {
@@ -41,6 +70,32 @@ private enum DebugAccountStore {
 
     static func remove(id: String) {
         all = all.filter { $0.id != id }
+        // Clean up last-active if the deleted account was last-active in any env
+        var lastActive = lastActiveMap
+        for (env, activeId) in lastActive where activeId == id {
+            lastActive.removeValue(forKey: env)
+        }
+        saveLastActiveMap(lastActive)
+    }
+
+    // MARK: - Last-Active Tracking
+
+    private static var lastActiveMap: [String: String] {
+        UserDefaults.standard.dictionary(forKey: lastActiveKey) as? [String: String] ?? [:]
+    }
+
+    private static func saveLastActiveMap(_ map: [String: String]) {
+        UserDefaults.standard.set(map, forKey: lastActiveKey)
+    }
+
+    static func lastActiveAccount(for envKey: String) -> String? {
+        lastActiveMap[envKey]
+    }
+
+    static func setLastActive(accountId: String, for envKey: String) {
+        var map = lastActiveMap
+        map[envKey] = accountId
+        saveLastActiveMap(map)
     }
 }
 
@@ -55,8 +110,12 @@ struct DebugSettingsView: View {
     @State private var isApplying = false
     @State private var statusMessage: String?
 
-    @State private var accounts: [DebugAccount] = DebugAccountStore.all
+    @State private var accounts: [DebugAccount] = []
     @State private var newAccountLabel = ""
+
+    private var selectedEnvKey: String {
+        DebugEnvironment.envKey(server: selectedServer, mode: selectedMode)
+    }
 
     private var resolvedKey: String {
         DebugEnvironment.apiKey(server: selectedServer, mode: selectedMode)
@@ -67,6 +126,10 @@ struct DebugSettingsView: View {
     }
 
     private var activeUserId: String? { authViewModel.appleUserID }
+
+    private var envDisplayName: String {
+        "\(selectedServer.displayName) \(selectedMode.displayName)"
+    }
 
     var body: some View {
         Form {
@@ -106,7 +169,7 @@ struct DebugSettingsView: View {
 
             Section {
                 Button {
-                    Task { await applyAndRebootstrap() }
+                    applyAndRebootstrap()
                 } label: {
                     HStack {
                         Spacer()
@@ -135,9 +198,9 @@ struct DebugSettingsView: View {
 
             // MARK: Accounts
 
-            Section("Test Accounts") {
+            Section("Test Accounts — \(envDisplayName)") {
                 if accounts.isEmpty {
-                    Text("No test accounts yet.")
+                    Text("No test accounts for this environment.")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
@@ -157,9 +220,10 @@ struct DebugSettingsView: View {
                                         .background(Color.green.opacity(0.15), in: Capsule())
                                 }
                             }
-                            Text(account.id.prefix(12) + "...")
+                            Text("ZS: " + account.id)
                                 .font(.caption.monospaced())
                                 .foregroundColor(.secondary)
+                                .textSelection(.enabled)
                         }
 
                         Spacer()
@@ -176,7 +240,7 @@ struct DebugSettingsView: View {
                 .onDelete { indexSet in
                     let toRemove = indexSet.map { accounts[$0].id }
                     for id in toRemove { DebugAccountStore.remove(id: id) }
-                    accounts = DebugAccountStore.all
+                    accounts = DebugAccountStore.accounts(for: selectedEnvKey)
                 }
 
                 HStack {
@@ -207,30 +271,66 @@ struct DebugSettingsView: View {
         }
         .navigationTitle("Debug Environment")
         .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            accounts = DebugAccountStore.accounts(for: selectedEnvKey)
+        }
+        .onChange(of: selectedServer) {
+            accounts = DebugAccountStore.accounts(for: selectedEnvKey)
+        }
+        .onChange(of: selectedMode) {
+            accounts = DebugAccountStore.accounts(for: selectedEnvKey)
+        }
     }
 
     // MARK: - Actions
 
-    private func applyAndRebootstrap() async {
+    private func applyAndRebootstrap() {
         isApplying = true
         statusMessage = nil
         defer { isApplying = false }
 
+        let oldEnvKey = DebugEnvironment.currentEnvKey
+
+        // 1. Save last-active account for the OLD env
+        if let userId = authViewModel.appleUserID {
+            DebugAccountStore.setLastActive(accountId: userId, for: oldEnvKey)
+        }
+
+        // 2. Sign out — clears Keychain + UserDefaults, sets isAuthenticated = false
+        authViewModel.signOut()
+
+        // 3. Reset purchase state — zeros tokens/known entitlements
+        purchaseManager.debugReset()
+
+        // 4. Persist new server/mode and reconfigure SDK
         DebugEnvironment.server = selectedServer
         DebugEnvironment.mode = selectedMode
         DebugEnvironment.apply()
 
-        guard let userId = authViewModel.appleUserID else {
-            statusMessage = "Configured (no user — skipped bootstrap)"
-            return
-        }
+        let newEnvKey = DebugEnvironment.currentEnvKey
 
-        do {
-            let catalog = try await ZeroSettle.shared.bootstrap(userId: userId)
-            purchaseManager.creditNewConsumableTokens()
-            statusMessage = "Switched — \(catalog.products.count) products loaded"
-        } catch {
-            statusMessage = "Error: \(error.localizedDescription)"
+        // 5. Refresh account list for new env
+        accounts = DebugAccountStore.accounts(for: newEnvKey)
+
+        // 6. Look up last-active account for new env and sign in + bootstrap.
+        if let lastActiveId = DebugAccountStore.lastActiveAccount(for: newEnvKey),
+           let account = accounts.first(where: { $0.id == lastActiveId }) {
+            let userId = authViewModel.debugSignIn(userId: account.id, label: account.label)
+            Task {
+                do {
+                    let catalog = try await ZeroSettle.shared.bootstrap(
+                        userId: userId,
+                        name: account.label,
+                        email: "\(account.label.lowercased().filter { $0.isLetter })@gmail.com"
+                    )
+                    purchaseManager.creditNewConsumableTokens()
+                    statusMessage = "Restored \(account.label) — \(catalog.products.count) products loaded"
+                } catch {
+                    statusMessage = "Error: \(error.localizedDescription)"
+                }
+            }
+        } else {
+            statusMessage = "Switched to \(envDisplayName) — signed out"
         }
     }
 
@@ -238,10 +338,11 @@ struct DebugSettingsView: View {
         let account = DebugAccount(
             id: UUID().uuidString,
             label: newAccountLabel.trimmingCharacters(in: .whitespaces),
-            createdAt: Date()
+            createdAt: Date(),
+            envKey: DebugEnvironment.currentEnvKey
         )
         DebugAccountStore.add(account)
-        accounts = DebugAccountStore.all
+        accounts = DebugAccountStore.accounts(for: selectedEnvKey)
         newAccountLabel = ""
 
         // Auto-switch to the new account
@@ -249,9 +350,28 @@ struct DebugSettingsView: View {
     }
 
     private func switchTo(_ account: DebugAccount) {
-        authViewModel.debugSignIn(userId: account.id, label: account.label)
+        // Clear old account's purchase state before signing into the new one
+        purchaseManager.debugReset()
+        ZeroSettle.shared.logout()
+
+        DebugAccountStore.setLastActive(accountId: account.id, for: DebugEnvironment.currentEnvKey)
+        let userId = authViewModel.debugSignIn(userId: account.id, label: account.label)
         statusMessage = nil
-        // isAuthenticated change triggers bootstrap in JustOneApp
+
+        // .task(id: isAuthenticated) won't re-fire (true→true), so bootstrap here.
+        Task {
+            do {
+                let catalog = try await ZeroSettle.shared.bootstrap(
+                    userId: userId,
+                    name: account.label,
+                    email: "\(account.label.lowercased().filter { $0.isLetter })@gmail.com"
+                )
+                purchaseManager.creditNewConsumableTokens()
+                statusMessage = "Switched — \(catalog.products.count) products loaded"
+            } catch {
+                statusMessage = "Error: \(error.localizedDescription)"
+            }
+        }
     }
 }
 #endif

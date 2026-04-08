@@ -14,3 +14,10 @@ xcuserdata/
 
 # CocoaPods (if ever used)
 Pods/
+
+# Device logs
+justone.log
+*.logarchive/
+
+# Xcode breakpoints (user-specific)
+*.xcbkptlist

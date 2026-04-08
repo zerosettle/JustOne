@@ -24,12 +24,10 @@ struct SettingsView: View {
     @State private var isUpgradeAvailable = false
     @State private var showCancelFlow = false
     @State private var showFallbackCancel = false
-    @State private var webCheckoutProduct: ZSProduct?
-    @State private var isMigrationLoading = false
     @State private var reminderEnabled = NotificationManager.isReminderEnabled
     @State private var reminderTime = {
         let comps = NotificationManager.reminderTimeComponents
-        return Calendar.current.date(from: comps) ?? Calendar.current.date(from: DateComponents(hour: 20, minute: 0))!
+        return Calendar.current.date(from: comps) ?? Calendar.current.date(from: DateComponents(hour: 20, minute: 0)) ?? Date()
     }()
 
     // MARK: - Body
@@ -74,17 +72,19 @@ struct SettingsView: View {
 
             ScrollView {
                 VStack(spacing: 20) {
-                    AccountCardView(user: authViewModel.currentUser, habits: habits)
+                    AccountCardView(user: authViewModel.currentUser, habits: habits, zeroSettleUserId: authViewModel.appleUserID)
                     weeklyReflectionCard
 
-                    // SDK PATTERN: Migration banner for StoreKit→web Switch & Save.
-                    // migrationManager is non-nil when the user is eligible to
-                    // migrate from StoreKit billing to direct billing at a discount.
-                    if let manager = ZeroSettle.shared.migrationManager,
-                       manager.state == .eligible || manager.state == .presented,
-                       let offer = manager.offerData {
-                        migrationBanner(manager: manager, offer: offer)
-                    }
+                    // SDK PATTERN: OfferTipView is the unified offer component —
+                    // handles migrations, upgrades, and post-checkout flows internally.
+                    OfferTipView(
+                        userId: authViewModel.appleUserID ?? "",
+                        onEvent: { event in
+                            if case .offerCompleted = event {
+                                Task { await purchaseManager.syncWithSDK(userId: authViewModel.appleUserID ?? "") }
+                            }
+                        }
+                    )
 
                     SubscriptionCardView(
                         showPremiumUpsell: $showPremiumUpsell,
@@ -132,42 +132,10 @@ struct SettingsView: View {
         } message: {
             Text("Your purchases have been restored successfully.")
         }
-        // SDK PATTERN: .checkoutSheet presents web checkout overlay.
-        // This instance tracks Switch & Save conversion on success.
-        // Free trials are configured server-side.
-        .checkoutSheet(
-            item: $webCheckoutProduct,
-            userId: authViewModel.appleUserID ?? "",
-            preload: .all
-        ) {
-            if let product = webCheckoutProduct {
-                CheckoutSheetHeader(product: product)
-            }
-        } onComplete: { result in
-            isMigrationLoading = false
-            Task {
-                errorMessage = await purchaseManager.processWebCheckout(result, userId: authViewModel.appleUserID)
-                // If this was a migration checkout, track the conversion
-                if case .success = result,
-                   let manager = ZeroSettle.shared.migrationManager,
-                   manager.state == .presented {
-                    await manager.markCheckoutSucceeded()
-                    await manager.showAppleSubscriptionManagement()
-                }
-            }
-        }
         .task {
             guard let userId = authViewModel.appleUserID else { return }
 
-            // Warm up the active subscription tier's checkout
-            if let tier = purchaseManager.activeSubscription {
-                await CheckoutSheet.warmUp(productId: tier.productId, userId: userId)
-            }
-
-            // Warm up the migration product's checkout if eligible
-            if let productId = ZeroSettle.shared.migrationManager?.offerData?.prompt.productId {
-                await CheckoutSheet.warmUp(productId: productId, userId: userId)
-            }
+            // Offer checkout warmup handled internally by OfferTipView
 
             // Check if an upgrade offer is available from the backend
             if purchaseManager.canUpgradeToAnnual {
@@ -268,74 +236,6 @@ struct SettingsView: View {
         } else {
             return "New week, fresh start. You've got this."
         }
-    }
-
-    // MARK: - Migration Banner
-
-    private func migrationBanner(manager: ZSMigrationManager, offer: MigrationOffer.OfferData) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .top) {
-                Image(systemName: "dollarsign.arrow.circlepath")
-                    .font(.title3)
-                    .foregroundColor(.justSuccess)
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(offer.prompt.title)
-                        .font(.headline)
-
-                    Text(offer.prompt.message)
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                }
-            }
-
-            if offer.freeTrialDays > 0 {
-                HStack(spacing: 6) {
-                    Image(systemName: "gift.fill")
-                        .font(.caption)
-                        .foregroundColor(.justPrimary)
-                    Text("\(offer.freeTrialDays) free days included")
-                        .font(.caption.weight(.medium))
-                        .foregroundColor(.justPrimary)
-                }
-            }
-
-            Button {
-                isMigrationLoading = true
-                manager.present()
-                if let product = ZeroSettle.shared.product(for: offer.prompt.productId) {
-                    webCheckoutProduct = product
-                } else {
-                    isMigrationLoading = false
-                }
-            } label: {
-                Group {
-                    if isMigrationLoading {
-                        ProgressView()
-                            .tint(.white)
-                    } else {
-                        Text(offer.prompt.ctaText)
-                    }
-                }
-                .font(.subheadline.weight(.semibold))
-                .foregroundColor(.white)
-                .frame(maxWidth: .infinity)
-                .frame(height: 44)
-                .background(LinearGradient.savingsGradient, in: RoundedRectangle(cornerRadius: 12))
-            }
-            .disabled(isMigrationLoading)
-
-            Button {
-                manager.dismiss()
-            } label: {
-                Text("No thanks")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .frame(maxWidth: .infinity)
-            }
-        }
-        .padding(20)
-        .glassCard()
     }
 
     // MARK: - Support Section

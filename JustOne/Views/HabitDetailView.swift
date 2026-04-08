@@ -3,8 +3,8 @@
 //  JustOne
 //
 //  Full detail view for a single habit.
-//  Shows a hero card, stats, the GitHub-style contribution graph,
-//  a "log today" toggle, and streak-saver controls.
+//  Orchestrates hero card, stats, contribution graph,
+//  log-today toggle, and streak-saver controls.
 //
 
 import SwiftUI
@@ -27,7 +27,6 @@ struct HabitDetailView: View {
     @State private var showDeleteConfirm = false
     @State private var showRenameAlert = false
     @State private var renameText = ""
-    @State private var showHealthKitSetup = false
 
     private var habitHistoryWeeksLabel: Int {
         let calendar = Calendar.current
@@ -45,19 +44,25 @@ struct HabitDetailView: View {
 
             ScrollView {
                 VStack(spacing: 24) {
-                    heroCard
+                    HabitHeroCardView(habit: habit)
                     if habit.isJourney {
-                        journeySection
+                        HabitJourneySection(habit: habit, showLevelUp: $showLevelUp)
                     }
                     if !habit.isInverse {
-                        healthKitCard
+                        HabitHealthKitCard(habit: habit)
                     }
-                    statsRow
+                    HabitStatsSection(habit: habit)
                     if habit.status == .active {
-                        logTodayButton
+                        HabitLogTodayButton(habit: habit, showLevelUp: $showLevelUp)
                     }
-                    contributionSection
-                    streakSaverSection
+                    HabitContributionSection(
+                        habit: habit,
+                        habitHistoryWeeksLabel: habitHistoryWeeksLabel
+                    ) { date in
+                        selectedDate = date
+                        showStreakSaverConfirm = true
+                    }
+                    HabitStreakSaverControls(showConsumableShop: $showConsumableShop)
                 }
                 .padding(.horizontal, 20)
                 .padding(.vertical, 16)
@@ -67,74 +72,7 @@ struct HabitDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Menu {
-                    Button {
-                        renameText = habit.name
-                        showRenameAlert = true
-                    } label: {
-                        Label("Rename", systemImage: "pencil")
-                    }
-
-                    if habit.isJourney {
-                        Button {
-                            showEditJourney = true
-                        } label: {
-                            Label("Edit Journey", systemImage: "pencil.line")
-                        }
-
-                        Button {
-                            withAnimation { habit.convertToStandard() }
-                        } label: {
-                            Label("Convert to Standard", systemImage: "arrow.uturn.backward")
-                        }
-                    } else {
-                        if habit.pausedJourneyConfig != nil {
-                            Button {
-                                withAnimation { habit.convertToJourney() }
-                            } label: {
-                                Label("Restore Journey", systemImage: "arrow.uturn.forward")
-                            }
-                        }
-
-                        Button {
-                            showConvertToJourney = true
-                        } label: {
-                            Label("Convert to Journey", systemImage: "chart.line.uptrend.xyaxis")
-                        }
-                    }
-
-                    Divider()
-
-                    if habit.status == .paused {
-                        Button {
-                            withAnimation { habit.status = .active }
-                        } label: {
-                            Label("Resume Habit", systemImage: "play.fill")
-                        }
-                    } else {
-                        Button {
-                            withAnimation { habit.status = .paused }
-                        } label: {
-                            Label("Pause Habit", systemImage: "pause.fill")
-                        }
-                    }
-
-                    Button {
-                        withAnimation { habit.status = .archived }
-                        dismiss()
-                    } label: {
-                        Label("Archive Habit", systemImage: "archivebox")
-                    }
-
-                    Button(role: .destructive) {
-                        showDeleteConfirm = true
-                    } label: {
-                        Label("Delete Habit", systemImage: "trash")
-                    }
-                } label: {
-                    Image(systemName: "ellipsis.circle")
-                        .foregroundColor(.justPrimary)
-                }
+                toolbarMenu
             }
         }
         .fullScreenCover(isPresented: $showConsumableShop) {
@@ -227,478 +165,76 @@ struct HabitDetailView: View {
         }
     }
 
-    // MARK: - Hero Card
+    // MARK: - Toolbar Menu
 
-    private var heroCard: some View {
-        VStack(spacing: 12) {
-            if habit.status == .paused {
-                HStack(spacing: 6) {
-                    Image(systemName: "pause.circle.fill")
-                    Text("Paused")
-                        .fontWeight(.medium)
-                }
-                .font(.caption)
-                .foregroundColor(.secondary)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .background(Color.secondary.opacity(0.12), in: Capsule())
+    private var toolbarMenu: some View {
+        Menu {
+            Button {
+                renameText = habit.name
+                showRenameAlert = true
+            } label: {
+                Label("Rename", systemImage: "pencil")
             }
 
-            Image(systemName: habit.icon)
-                .font(.system(size: 44))
-                .foregroundColor(habit.displayColor)
-                .frame(width: 80, height: 80)
-                .background(
-                    habit.displayColor.opacity(0.12),
-                    in: RoundedRectangle(cornerRadius: 24)
-                )
+            if habit.isJourney {
+                Button {
+                    showEditJourney = true
+                } label: {
+                    Label("Edit Journey", systemImage: "pencil.line")
+                }
 
-            Text(habit.name)
-                .font(.title2.weight(.bold))
-
-            if let config = habit.journeyConfig {
-                Text("Journey: \(config.formattedValue(config.startValue)) \u{2192} \(config.formattedValue(config.goalValue))")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
+                Button {
+                    withAnimation { habit.convertToStandard() }
+                } label: {
+                    Label("Convert to Standard", systemImage: "arrow.uturn.backward")
+                }
             } else {
-                Text("Goal: \(habit.frequencyPerWeek)\u{00D7} per week")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-            }
-
-            // Weekly progress bar
-            let progress = habit.weeklyProgress()
-            VStack(spacing: 6) {
-                GeometryReader { geo in
-                    ZStack(alignment: .leading) {
-                        RoundedRectangle(cornerRadius: 8)
-                            .fill(habit.displayColor.opacity(0.15))
-                        RoundedRectangle(cornerRadius: 8)
-                            .fill(habit.displayColor)
-                            .frame(width: geo.size.width * progress)
+                if habit.pausedJourneyConfig != nil {
+                    Button {
+                        withAnimation { habit.convertToJourney() }
+                    } label: {
+                        Label("Restore Journey", systemImage: "arrow.uturn.forward")
                     }
                 }
-                .frame(height: 10)
 
-                HStack {
-                    Text("\(habit.completionsInWeek())/\(habit.frequencyPerWeek) this week")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    Spacer()
-                    if progress >= 1.0 {
-                        Label("Consistent", systemImage: "checkmark.seal.fill")
-                            .font(.caption.weight(.semibold))
-                            .foregroundColor(.justSuccess)
-                    }
+                Button {
+                    showConvertToJourney = true
+                } label: {
+                    Label("Convert to Journey", systemImage: "chart.line.uptrend.xyaxis")
                 }
             }
-        }
-        .frame(maxWidth: .infinity)
-    }
 
-    // MARK: - Stats Row
+            Divider()
 
-    private var statsRow: some View {
-        VStack(spacing: 8) {
-            HStack(spacing: 12) {
-                statCard(title: "Streak",  value: "\(habit.currentStreak)", unit: "weeks",     icon: "flame.fill",                     color: .justWarning)
-                statCard(title: "Total",   value: "\(habit.totalCompletions)", unit: "days",   icon: "calendar",                       color: habit.displayColor)
-                statCard(title: "Rate",    value: "\(Int(habit.weeklyProgress() * 100))%", unit: "this week", icon: "chart.line.uptrend.xyaxis", color: .justSuccess)
-            }
-
-            if habit.currentStreak >= 4 {
-                Text("You're building something. \(habit.currentStreak) weeks and counting.")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .multilineTextAlignment(.center)
-            } else if habit.currentStreak >= 2 {
-                Text("Consistency beats intensity. Keep showing up.")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .multilineTextAlignment(.center)
-            }
-        }
-    }
-
-    private func statCard(title: String, value: String, unit: String, icon: String, color: Color) -> some View {
-        VStack(spacing: 6) {
-            Image(systemName: icon)
-                .font(.caption)
-                .foregroundColor(color)
-            Text(value)
-                .font(.title3.weight(.bold).monospacedDigit())
-            Text(unit)
-                .font(.caption2)
-                .foregroundColor(.secondary)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 16)
-        .glassCard(cornerRadius: 16)
-    }
-
-    // MARK: - Journey Section
-
-    @ViewBuilder
-    private var journeySection: some View {
-        if let config = habit.journeyConfig {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    Image(systemName: "map.fill")
-                        .foregroundColor(.justPrimary)
-                    Text("Journey Progress")
-                        .font(.headline)
-                    Spacer()
-                    Text("Level \(config.currentLevel + 1) of \(config.totalLevels)")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+            if habit.status == .paused {
+                Button {
+                    withAnimation { habit.status = .active }
+                } label: {
+                    Label("Resume Habit", systemImage: "play.fill")
                 }
-
-                JourneyTimelineView(
-                    journeyConfig: config,
-                    accentColor: habit.displayColor
-                )
-
-                if config.isAtFinalLevel {
-                    HStack(spacing: 6) {
-                        Image(systemName: "trophy.fill")
-                            .foregroundColor(.justWarning)
-                        Text("Journey Complete!")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundColor(.justWarning)
-                        Spacer()
-                        Button {
-                            withAnimation { habit.levelDown() }
-                        } label: {
-                            HStack(spacing: 4) {
-                                Image(systemName: "arrow.down.circle")
-                                Text("Step Back")
-                            }
-                            .font(.caption.weight(.medium))
-                            .foregroundColor(.secondary)
-                        }
-                    }
-                } else {
-                    HStack(spacing: 12) {
-                        if config.currentLevel > 0 {
-                            Button {
-                                withAnimation { habit.levelDown() }
-                            } label: {
-                                HStack(spacing: 4) {
-                                    Image(systemName: "arrow.down.circle")
-                                    Text("Step Back")
-                                }
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                            }
-                        }
-
-                        Spacer()
-
-                        Button {
-                            showLevelUp = true
-                        } label: {
-                            HStack(spacing: 4) {
-                                Image(systemName: "arrow.up.circle")
-                                Text("Advance")
-                            }
-                            .font(.subheadline)
-                            .foregroundColor(.justPrimary)
-                        }
-                    }
+            } else {
+                Button {
+                    withAnimation { habit.status = .paused }
+                } label: {
+                    Label("Pause Habit", systemImage: "pause.fill")
                 }
             }
-            .padding(20)
-            .glassCard()
-        }
-    }
 
-    // MARK: - Log Today
-
-    @ViewBuilder
-    private var logTodayButton: some View {
-        if habit.isInverse {
-            inverseLogTodayButton
-        } else {
-            standardLogTodayButton
-        }
-    }
-
-    private var standardLogTodayButton: some View {
-        let today = Date()
-        let done = habit.isCompleted(on: today)
-
-        return Button {
-            withAnimation(.easeInOut(duration: 0.25)) {
-                habit.toggleCompletionAndReloadWidget(on: today)
+            Button {
+                withAnimation { habit.status = .archived }
+                dismiss()
+            } label: {
+                Label("Archive Habit", systemImage: "archivebox")
             }
-            HapticFeedback.impact(habit.isCompleted(on: today) ? .medium : .light)
-            // Check for level-up after completing (not uncompleting)
-            if habit.isCompleted(on: today) && habit.qualifiesForLevelUp() {
-                Task { @MainActor in
-                    try? await Task.sleep(for: .milliseconds(500))
-                    showLevelUp = true
-                }
+
+            Button(role: .destructive) {
+                showDeleteConfirm = true
+            } label: {
+                Label("Delete Habit", systemImage: "trash")
             }
         } label: {
-            HStack(spacing: 10) {
-                Image(systemName: done ? "checkmark.circle.fill" : "circle")
-                    .font(.title3)
-                    .contentTransition(.symbolEffect(.replace))
-                Text(done ? "You showed up today" : "Show up today")
-                    .font(.headline)
-                    .contentTransition(.interpolate)
-            }
-            .foregroundColor(done ? .white : habit.displayColor)
-            .frame(maxWidth: .infinity)
-            .frame(height: 54)
-            .background(
-                habit.displayColor.opacity(done ? 1.0 : 0.12),
-                in: RoundedRectangle(cornerRadius: 16)
-            )
-        }
-        .animation(.easeInOut(duration: 0.25), value: done)
-    }
-
-    @ViewBuilder
-    private var inverseLogTodayButton: some View {
-        let today = Date()
-        let affirmed = habit.isAffirmed(on: today)
-        let slipped = !habit.isCompleted(on: today) // isCompleted inverts for inverse
-
-        if affirmed {
-            // Affirmed state
-            Button {
-                withAnimation(.easeInOut(duration: 0.25)) {
-                    habit.undoAffirmAndReloadWidget(on: today)
-                }
-                HapticFeedback.impact(.light)
-            } label: {
-                HStack(spacing: 10) {
-                    Image(systemName: "checkmark.shield.fill")
-                        .font(.title3)
-                        .contentTransition(.symbolEffect(.replace))
-                    Text("Holding strong!")
-                        .font(.headline)
-                        .contentTransition(.interpolate)
-                }
-                .foregroundColor(.white)
-                .frame(maxWidth: .infinity)
-                .frame(height: 54)
-                .background(Color.justSuccess, in: RoundedRectangle(cornerRadius: 16))
-            }
-            .animation(.easeInOut(duration: 0.25), value: affirmed)
-        } else if slipped {
-            // Slipped state
-            Button {
-                withAnimation(.easeInOut(duration: 0.25)) {
-                    habit.undoSlipAndReloadWidget(on: today)
-                }
-                HapticFeedback.impact(.light)
-            } label: {
-                HStack(spacing: 10) {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.title3)
-                        .contentTransition(.symbolEffect(.replace))
-                    Text("Slipped today")
-                        .font(.headline)
-                        .contentTransition(.interpolate)
-                }
-                .foregroundColor(.white)
-                .frame(maxWidth: .infinity)
-                .frame(height: 54)
-                .background(Color.justWarning, in: RoundedRectangle(cornerRadius: 16))
-            }
-            .animation(.easeInOut(duration: 0.25), value: slipped)
-        } else {
-            // Not interacted — dual buttons
-            HStack(spacing: 12) {
-                Button {
-                    withAnimation(.easeInOut(duration: 0.25)) {
-                        habit.affirmDayAndReloadWidget(on: today)
-                    }
-                    HapticFeedback.impact(.medium)
-                } label: {
-                    HStack(spacing: 8) {
-                        Image(systemName: "checkmark.shield.fill")
-                            .font(.title3)
-                        Text("I held strong!")
-                            .font(.headline)
-                    }
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 54)
-                    .background(Color.justSuccess, in: RoundedRectangle(cornerRadius: 16))
-                }
-
-                Button {
-                    withAnimation(.easeInOut(duration: 0.25)) {
-                        habit.logSlipAndReloadWidget(on: today)
-                    }
-                    HapticFeedback.impact(.light)
-                } label: {
-                    HStack(spacing: 8) {
-                        Image(systemName: "xmark.circle")
-                            .font(.title3)
-                        Text("I slipped")
-                            .font(.headline)
-                    }
-                    .foregroundColor(.justWarning)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 54)
-                    .background(Color.justWarning.opacity(0.12), in: RoundedRectangle(cornerRadius: 16))
-                }
-            }
+            Image(systemName: "ellipsis.circle")
+                .foregroundColor(.justPrimary)
         }
     }
-
-    // MARK: - HealthKit Card
-
-    @ViewBuilder
-    private var healthKitCard: some View {
-        if let trigger = habit.healthKitTrigger {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    Image(systemName: "heart.fill")
-                        .foregroundColor(.pink)
-                    Text("Health Data")
-                        .font(.headline)
-                    Spacer()
-
-                    Button {
-                        habit.healthKitTrigger = nil
-                    } label: {
-                        Text("Remove")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                }
-
-                HStack(spacing: 8) {
-                    Image(systemName: trigger.triggerType.icon)
-                        .font(.title3)
-                        .foregroundColor(habit.displayColor)
-                        .frame(width: 36, height: 36)
-                        .background(habit.displayColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 10))
-
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Auto-completes at")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-
-                        if trigger.triggerType == .workout {
-                            Text("Any workout")
-                                .font(.subheadline.weight(.medium))
-                        } else {
-                            Text("\(Int(trigger.threshold)) \(trigger.triggerType.unit)")
-                                .font(.subheadline.weight(.medium))
-                        }
-                    }
-                }
-            }
-            .padding(20)
-            .glassCard()
-        } else {
-            Button {
-                showHealthKitSetup = true
-            } label: {
-                HStack(spacing: 12) {
-                    Image(systemName: "heart.fill")
-                        .foregroundColor(.pink)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Link to Health Data")
-                            .font(.subheadline.weight(.medium))
-                        Text("Auto-complete with steps, workouts, or sleep")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                    Spacer()
-                    Image(systemName: "chevron.right")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-                .padding(16)
-                .glassCard()
-            }
-            .buttonStyle(.plain)
-            .sheet(isPresented: $showHealthKitSetup) {
-                HealthKitSetupSheet(habit: habit)
-            }
-        }
-    }
-
-    // MARK: - Contribution Graph
-
-    private var contributionSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Image(systemName: "square.grid.3x3.fill")
-                    .foregroundColor(.justPrimary)
-                Text("Activity")
-                    .font(.headline)
-                Spacer()
-                Text("Last \(habitHistoryWeeksLabel) week\(habitHistoryWeeksLabel == 1 ? "" : "s")")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-
-            ContributionGraphView(habit: habit) { date in
-                // Only allow streak savers on past, uncompleted days
-                let startOfToday = Calendar.current.startOfDay(for: Date())
-                if !habit.isCompleted(on: date) && date < startOfToday {
-                    selectedDate = date
-                    showStreakSaverConfirm = true
-                }
-            }
-        }
-        .padding(20)
-        .glassCard()
-    }
-
-    // MARK: - Streak Saver Section
-
-    private var streakSaverSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Image(systemName: "bandage.fill")
-                    .foregroundColor(.justWarning)
-                Text("Streak Savers")
-                    .font(.headline)
-                Spacer()
-                if purchaseManager.hasUnlimitedStreakSavers {
-                    HStack(spacing: 4) {
-                        Image(systemName: "infinity")
-                        Text("Unlimited")
-                    }
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundColor(.justSuccess)
-                } else {
-                    Text("\(purchaseManager.streakSaverTokens) remaining")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundColor(.justPrimary)
-                }
-            }
-
-            Text("Tap a missed day on the graph above to fill it in and protect your streak.")
-                .font(.caption)
-                .foregroundColor(.secondary)
-
-            if !purchaseManager.hasUnlimitedStreakSavers {
-                Button { showConsumableShop = true } label: {
-                    HStack {
-                        Image(systemName: "cart.fill")
-                        Text("Get More Streak Savers")
-                            .fontWeight(.medium)
-                    }
-                    .font(.subheadline)
-                    .foregroundColor(.justPrimary)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 44)
-                    .background(Color.justPrimary.opacity(0.10), in: RoundedRectangle(cornerRadius: 12))
-                }
-            }
-        }
-        .padding(20)
-        .glassCard()
-    }
-
 }

@@ -75,17 +75,13 @@ struct SettingsView: View {
                     AccountCardView(user: authViewModel.currentUser, habits: habits, zeroSettleUserId: authViewModel.appleUserID)
                     weeklyReflectionCard
 
-                    // SDK PATTERN: OfferTipView is the unified offer component —
-                    // handles migrations, upgrades, and post-checkout flows internally.
-                    OfferTipView(
+                    // SDK PATTERN: Custom offer card using ZSOfferManager.
+                    // Observes the shared offer manager for eligibility, renders a
+                    // custom card, and triggers checkout via .checkoutSheet.
+                    OfferCardView(
                         userId: authViewModel.appleUserID ?? "",
-                        onEvent: { event in
-                            switch event {
-                            case .checkoutCompleted, .offerCompleted:
-                                Task { await purchaseManager.syncWithSDK(userId: authViewModel.appleUserID ?? "") }
-                            default:
-                                break
-                            }
+                        onCheckoutCompleted: {
+                            Task { await purchaseManager.syncWithSDK(userId: authViewModel.appleUserID ?? "") }
                         }
                     )
 
@@ -138,7 +134,7 @@ struct SettingsView: View {
         .task {
             guard let userId = authViewModel.appleUserID else { return }
 
-            // Offer checkout warmup handled internally by OfferTipView
+            // Offer checkout warmup handled internally by OfferCardView's .checkoutSheet
 
             // Check if an upgrade offer is available from the backend
             if purchaseManager.canUpgradeToAnnual {

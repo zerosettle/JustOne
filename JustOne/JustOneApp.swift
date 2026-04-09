@@ -15,6 +15,7 @@ import ZeroSettleKit
 struct JustOneApp: App {
     @State private var authViewModel = AuthViewModel()
     @State private var purchaseManager = PurchaseManager()
+    @Environment(\.scenePhase) private var scenePhase
 
     init() {
         // SDK PATTERN: Configure ZeroSettleKit before any other SDK call.
@@ -25,7 +26,7 @@ struct JustOneApp: App {
 #else
         let key = "zs_pk_live_2c44f5c468ff4907322a0f8825e976bce0a7be46571af88b"
         // Each preloaded WebView uses ~3-7 MB; nil = no limit, fine for small catalogs
-        ZeroSettle.shared.configure(.init(publishableKey: key, preloadCheckout: false, maxPreloadedWebViews: nil))
+        ZeroSettle.shared.configure(.init(publishableKey: key, preloadCheckout: true, maxPreloadedWebViews: nil))
 #endif
     }
 
@@ -70,6 +71,13 @@ struct JustOneApp: App {
                 .task {
                     for await _ in ZeroSettle.shared.entitlementUpdates {
                         purchaseManager.creditNewConsumableTokens()
+                    }
+                }
+                // SDK PATTERN: Sync entitlements when returning to foreground.
+                // Catches subscription state changes and browser checkout completions.
+                .onChange(of: scenePhase) { _, phase in
+                    if phase == .active, authViewModel.isAuthenticated, let userId = authViewModel.appleUserID {
+                        Task { await purchaseManager.syncWithSDK(userId: userId) }
                     }
                 }
                 // SDK PATTERN: .zeroSettleHandler() enables universal-link callbacks

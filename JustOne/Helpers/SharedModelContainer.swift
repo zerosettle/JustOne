@@ -15,10 +15,13 @@ enum SharedModelContainer {
 
     private static let migrationKey = "SharedModelContainer.migrationCompleted"
 
-    static func create() -> ModelContainer {
+    /// Cached container — created once and reused on every access.
+    /// Returning a new instance on each call caused `.modelContainer()`
+    /// to tear down the window content (new reference ≠ old reference),
+    /// cancelling all in-flight `.task` modifiers including bootstrap.
+    private static let cached: ModelContainer = {
         let schema = Schema([Habit.self])
 
-        // Attempt App Group–backed store
         if let groupURL = FileManager.default
             .containerURL(forSecurityApplicationGroupIdentifier: appGroupID)?
             .appendingPathComponent("JustOne.store") {
@@ -29,9 +32,12 @@ enum SharedModelContainer {
             }
         }
 
-        // Fallback: in-memory container so the app can at least launch
         let fallbackConfig = ModelConfiguration(isStoredInMemoryOnly: true)
         return try! ModelContainer(for: schema, configurations: [fallbackConfig])
+    }()
+
+    static func create() -> ModelContainer {
+        cached
     }
 
     /// One-time migration: copy old default store to App Group location.

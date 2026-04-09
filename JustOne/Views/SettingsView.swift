@@ -80,8 +80,11 @@ struct SettingsView: View {
                     OfferTipView(
                         userId: authViewModel.appleUserID ?? "",
                         onEvent: { event in
-                            if case .offerCompleted = event {
+                            switch event {
+                            case .checkoutCompleted, .offerCompleted:
                                 Task { await purchaseManager.syncWithSDK(userId: authViewModel.appleUserID ?? "") }
+                            default:
+                                break
                             }
                         }
                     )

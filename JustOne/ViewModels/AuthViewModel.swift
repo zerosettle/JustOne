@@ -9,6 +9,7 @@
 
 import SwiftUI
 import AuthenticationServices
+import ZeroSettleKit
 
 @MainActor
 @Observable
@@ -20,6 +21,9 @@ final class AuthViewModel {
 
     private static let appleUserIDKey = "appleUserID"
     private static let userDefaultsKey = "storedUser"
+    #if DEBUG
+    private static let debugAccountKey = "isDebugAccount"
+    #endif
 
     /// The stable Apple user ID from Keychain (persists across reinstalls).
     /// Used as the ZeroSettle SDK user identifier.
@@ -40,6 +44,18 @@ final class AuthViewModel {
         }
 
         isLoading = true
+
+        #if DEBUG
+        // Debug accounts use synthetic UUIDs that Apple won't recognize.
+        // Skip credential verification and restore directly from UserDefaults.
+        if isDebugAccount(userID), let user = loadUserFromDefaults() {
+            currentUser = user
+            isAuthenticated = true
+            isLoading = false
+            hasRestoredSession = true
+            return
+        }
+        #endif
 
         let state: ASAuthorizationAppleIDProvider.CredentialState = await withCheckedContinuation { continuation in
             ASAuthorizationAppleIDProvider().getCredentialState(forUserID: userID) { credentialState, _ in
@@ -68,6 +84,9 @@ final class AuthViewModel {
         if let data = userID.data(using: .utf8) {
             KeychainHelper.save(data, for: Self.appleUserIDKey)
         }
+        #if DEBUG
+        UserDefaults.standard.set(false, forKey: Self.debugAccountKey)
+        #endif
 
         // Apple only sends name/email on the FIRST authorization
         let existingUser = loadUserFromDefaults()
@@ -99,6 +118,7 @@ final class AuthViewModel {
     // MARK: - Sign Out
 
     func signOut() {
+        ZeroSettle.shared.logout()
         KeychainHelper.delete(for: Self.appleUserIDKey)
         UserDefaults.standard.removeObject(forKey: Self.userDefaultsKey)
         currentUser = nil
@@ -123,11 +143,18 @@ final class AuthViewModel {
 
 #if DEBUG
 extension AuthViewModel {
+    private func isDebugAccount(_ userID: String) -> Bool {
+        UserDefaults.standard.bool(forKey: Self.debugAccountKey)
+    }
+
     /// Signs in with a synthetic user ID (bypasses Sign in with Apple).
-    func debugSignIn(userId: String, label: String) {
+    /// Returns the new userId so callers can re-bootstrap.
+    @discardableResult
+    func debugSignIn(userId: String, label: String) -> String {
         if let data = userId.data(using: .utf8) {
             KeychainHelper.save(data, for: Self.appleUserIDKey)
         }
+        UserDefaults.standard.set(true, forKey: Self.debugAccountKey)
 
         let existing = loadUserFromDefaults()
         let user = User(
@@ -140,6 +167,7 @@ extension AuthViewModel {
         saveUserToDefaults(user)
         currentUser = user
         isAuthenticated = true
+        return userId
     }
 }
 #endif

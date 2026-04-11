@@ -20,7 +20,6 @@ struct PremiumUpsellView: View {
     @State private var webCheckoutProduct: ZSProduct?
     @State private var isLoadingWebCheckout = false
     @State private var contentHeight: CGFloat = 600
-    @Environment(\.scenePhase) private var scenePhase
 
     private var upgradeTiers: [SubscriptionTier] {
         guard let current = purchaseManager.activeSubscription else {
@@ -110,9 +109,7 @@ struct PremiumUpsellView: View {
         } message: {
             Text(errorMessage ?? "")
         }
-        .onChange(of: scenePhase) { _, phase in
-            if phase != .active { isLoadingWebCheckout = false }
-        }
+        .resetLoadingOnBackground($isLoadingWebCheckout)
     }
 
     // MARK: - Hero Area

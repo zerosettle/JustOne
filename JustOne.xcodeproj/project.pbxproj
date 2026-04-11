@@ -279,7 +279,7 @@
 			mainGroup = 60F6B5592F4E363700CEBF20;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				60F6B7692F5244CC00CEBF20 /* XCRemoteSwiftPackageReference "ZeroSettleKit" */,
+				60F6B7692F5244CC00CEBF20 /* XCLocalSwiftPackageReference "../zerosettle/ZeroSettleKit" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 60F6B5632F4E363700CEBF20 /* Products */;
@@ -700,21 +700,17 @@
 		};
 /* End XCConfigurationList section */
 
-/* Begin XCRemoteSwiftPackageReference section */
-		60F6B7692F5244CC00CEBF20 /* XCRemoteSwiftPackageReference "ZeroSettleKit" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/zerosettle/ZeroSettleKit.git";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 1.1.0;
-			};
+/* Begin XCLocalSwiftPackageReference section */
+		60F6B7692F5244CC00CEBF20 /* XCLocalSwiftPackageReference "../zerosettle/ZeroSettleKit" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../zerosettle/ZeroSettleKit;
 		};
-/* End XCRemoteSwiftPackageReference section */
+/* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
 		60F6B76A2F5244CC00CEBF20 /* ZeroSettleKit */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 60F6B7692F5244CC00CEBF20 /* XCRemoteSwiftPackageReference "ZeroSettleKit" */;
+			package = 60F6B7692F5244CC00CEBF20 /* XCLocalSwiftPackageReference "../zerosettle/ZeroSettleKit" */;
 			productName = ZeroSettleKit;
 		};
 /* End XCSwiftPackageProductDependency section */

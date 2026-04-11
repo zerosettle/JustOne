@@ -53,6 +53,7 @@ struct OfferCardView: View {
                 }
             }
         }
+        .resetLoadingOnBackground($isCheckoutLoading)
     }
 
     // MARK: - Offer Card

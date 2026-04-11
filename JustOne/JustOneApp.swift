@@ -16,6 +16,7 @@ struct JustOneApp: App {
     @State private var authViewModel = AuthViewModel()
     @State private var purchaseManager = PurchaseManager()
     @Environment(\.scenePhase) private var scenePhase
+    @State private var lastSyncDate: Date?
 
     init() {
         // SDK PATTERN: Configure ZeroSettleKit before any other SDK call.
@@ -41,8 +42,13 @@ struct JustOneApp: App {
                 // SDK PATTERN: bootstrap() fetches the product catalog, restores
                 // entitlements, and starts the StoreKit transaction listener — all in
                 // one call. You do NOT need to call restoreEntitlements() separately.
-                .task(id: authViewModel.isAuthenticated) {
-                    if authViewModel.isAuthenticated, let userId = authViewModel.appleUserID {
+                // Wait for session restore to complete before bootstrapping.
+                // This prevents the race where restoreSession() sets isAuthenticated=true
+                // mid-execution, triggering bootstrap, which then gets cancelled when
+                // restoreSession() updates other state (isLoading, hasRestoredSession).
+                .task(id: authViewModel.hasRestoredSession) {
+                    if authViewModel.isAuthenticated, authViewModel.hasRestoredSession,
+                       let userId = authViewModel.appleUserID {
                         do {
                             let name = authViewModel.currentUser?.displayName
                             let email = authViewModel.currentUser?.email
@@ -75,9 +81,14 @@ struct JustOneApp: App {
                 }
                 // SDK PATTERN: Sync entitlements when returning to foreground.
                 // Catches subscription state changes and browser checkout completions.
+                // Debounced to avoid redundant API calls on rapid app switches.
                 .onChange(of: scenePhase) { _, phase in
                     if phase == .active, authViewModel.isAuthenticated, let userId = authViewModel.appleUserID {
-                        Task { await purchaseManager.syncWithSDK(userId: userId) }
+                        let now = Date()
+                        if lastSyncDate == nil || now.timeIntervalSince(lastSyncDate!) > 30 {
+                            lastSyncDate = now
+                            Task { await purchaseManager.syncWithSDK(userId: userId) }
+                        }
                     }
                 }
                 // SDK PATTERN: .zeroSettleHandler() enables universal-link callbacks

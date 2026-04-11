@@ -127,6 +127,7 @@ struct LaunchPaywallView: View {
                 if case .success = result { dismiss() }
             }
         }
+        .resetLoadingOnBackground($isLoadingWebCheckout)
         .alert("Purchase Error", isPresented: Binding(
             get: { errorMessage != nil },
             set: { if !$0 { errorMessage = nil } }

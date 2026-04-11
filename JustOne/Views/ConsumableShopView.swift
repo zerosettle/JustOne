@@ -21,7 +21,6 @@ struct ConsumableShopView: View {
 
     @State private var isFooterExpanded = true
     @State private var scrollAccumulator: CGFloat = 0
-    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         NavigationStack {
@@ -100,9 +99,7 @@ struct ConsumableShopView: View {
             } message: {
                 Text(errorMessage ?? "")
             }
-            .onChange(of: scenePhase) { _, phase in
-                if phase != .active { isLoadingWebCheckout = false }
-            }
+            .resetLoadingOnBackground($isLoadingWebCheckout)
             .onAppear {
                 ZeroSettle.trackEvent(.paywallViewed, productId: selection?.productId ?? "", screenName: "ConsumableShopView")
             }

@@ -1,0 +1,15 @@
+{
+  "originHash" : "a47658087e2e5e6b3c641f3ead5c56fe15ca086206764434a34a347034ee2c54",
+  "pins" : [
+    {
+      "identity" : "zerosettlekit",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/zerosettle/ZeroSettleKit.git",
+      "state" : {
+        "revision" : "084f9469b6092376ef8d8d049f4fb3b235698741",
+        "version" : "1.2.0"
+      }
+    }
+  ],
+  "version" : 3
+}

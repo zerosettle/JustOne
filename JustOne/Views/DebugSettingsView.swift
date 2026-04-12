@@ -8,6 +8,7 @@
 
 #if DEBUG
 import SwiftUI
+import StoreKit
 import ZeroSettleKit
 
 // MARK: - Debug Account Model
@@ -115,6 +116,8 @@ struct DebugSettingsView: View {
     @State private var claimTarget: ZSProduct?
     @State private var claimInProgress = false
     @State private var claimResult: String?
+    /// Product IDs that have active StoreKit transactions on this Apple ID.
+    @State private var storeKitProductIds: Set<String> = []
 
     private var selectedEnvKey: String {
         DebugEnvironment.envKey(server: selectedServer, mode: selectedMode)
@@ -352,40 +355,8 @@ struct DebugSettingsView: View {
 
             ForEach(claimable) { product in
                 let owned = ZeroSettle.shared.hasActiveEntitlement(for: product.id)
-                HStack {
-                    VStack(alignment: .leading, spacing: 2) {
-                        HStack(spacing: 6) {
-                            Text(product.displayName)
-                                .font(.subheadline.weight(.medium))
-                            if owned {
-                                Text("OWNED")
-                                    .font(.caption2.weight(.bold))
-                                    .foregroundColor(.green)
-                                    .padding(.horizontal, 6)
-                                    .padding(.vertical, 2)
-                                    .background(Color.green.opacity(0.15), in: Capsule())
-                            }
-                        }
-                        Text(product.id)
-                            .font(.caption.monospaced())
-                            .foregroundColor(.secondary)
-                    }
-
-                    Spacer()
-
-                    if owned {
-                        Image(systemName: "checkmark.circle.fill")
-                            .foregroundColor(.green)
-                    } else {
-                        Button("Claim") {
-                            claimTarget = product
-                        }
-                        .font(.caption.weight(.semibold))
-                        .buttonStyle(.bordered)
-                        .tint(.orange)
-                        .disabled(claimInProgress)
-                    }
-                }
+                let hasTransaction = storeKitProductIds.contains(product.id)
+                claimRow(product: product, owned: owned, hasTransaction: hasTransaction)
             }
 
             if let claimResult {
@@ -403,6 +374,57 @@ struct DebugSettingsView: View {
         } footer: {
             Text("Transfer a StoreKit entitlement from another ZeroSettle account to the current one. Only for subscriptions and non-consumables.")
         }
+        .task { await refreshStoreKitProducts() }
+    }
+
+    private func claimRow(product: ZSProduct, owned: Bool, hasTransaction: Bool) -> some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 6) {
+                    Text(product.displayName)
+                        .font(.subheadline.weight(.medium))
+                    if owned {
+                        Text("OWNED")
+                            .font(.caption2.weight(.bold))
+                            .foregroundColor(.green)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Color.green.opacity(0.15), in: Capsule())
+                    }
+                }
+                Text(product.id)
+                    .font(.caption.monospaced())
+                    .foregroundColor(.secondary)
+            }
+
+            Spacer()
+
+            if owned {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundColor(.green)
+            } else if hasTransaction {
+                Button("Claim") {
+                    claimTarget = product
+                }
+                .font(.caption.weight(.semibold))
+                .buttonStyle(.bordered)
+                .tint(.orange)
+                .disabled(claimInProgress)
+            } else {
+                Text("No StoreKit txn")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+            }
+        }
+    }
+
+    private func refreshStoreKitProducts() async {
+        var ids: Set<String> = []
+        for await result in Transaction.currentEntitlements {
+            guard case .verified(let txn) = result else { continue }
+            ids.insert(txn.productID)
+        }
+        storeKitProductIds = ids
     }
 
     // MARK: - Actions

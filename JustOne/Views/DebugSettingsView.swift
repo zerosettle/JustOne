@@ -354,9 +354,9 @@ struct DebugSettingsView: View {
             }
 
             ForEach(claimable) { product in
-                let owned = ZeroSettle.shared.hasActiveEntitlement(for: product.id)
+                let entitlement = ZeroSettle.shared.activeEntitlements.first(where: { $0.productId == product.id })
                 let hasTransaction = storeKitProductIds.contains(product.id)
-                claimRow(product: product, owned: owned, hasTransaction: hasTransaction)
+                claimRow(product: product, entitlement: entitlement, hasTransaction: hasTransaction)
             }
 
             if let claimResult {
@@ -377,19 +377,16 @@ struct DebugSettingsView: View {
         .task { await refreshStoreKitProducts() }
     }
 
-    private func claimRow(product: ZSProduct, owned: Bool, hasTransaction: Bool) -> some View {
-        HStack {
+    private func claimRow(product: ZSProduct, entitlement: Entitlement?, hasTransaction: Bool) -> some View {
+        let owned = entitlement != nil
+        let isCancelled = entitlement?.status == .cancelled
+        return HStack {
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 6) {
                     Text(product.displayName)
                         .font(.subheadline.weight(.medium))
                     if owned {
-                        Text("OWNED")
-                            .font(.caption2.weight(.bold))
-                            .foregroundColor(.green)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(Color.green.opacity(0.15), in: Capsule())
+                        statusBadge(isCancelled: isCancelled, source: entitlement?.source)
                     }
                 }
                 Text(product.id)
@@ -399,9 +396,12 @@ struct DebugSettingsView: View {
 
             Spacer()
 
-            if owned {
+            if owned && !isCancelled {
                 Image(systemName: "checkmark.circle.fill")
                     .foregroundColor(.green)
+            } else if owned && isCancelled {
+                Image(systemName: "clock.badge.xmark")
+                    .foregroundColor(.orange)
             } else if hasTransaction {
                 Button("Claim") {
                     claimTarget = product
@@ -416,6 +416,18 @@ struct DebugSettingsView: View {
                     .foregroundColor(.secondary)
             }
         }
+    }
+
+    private func statusBadge(isCancelled: Bool, source: Entitlement.Source?) -> some View {
+        let label = isCancelled ? "SUPERSEDED" : "OWNED"
+        let sourceSuffix = source == .storeKit ? " (SK)" : source == .webCheckout ? " (Web)" : ""
+        let color: Color = isCancelled ? .orange : .green
+        return Text(label + sourceSuffix)
+            .font(.caption2.weight(.bold))
+            .foregroundColor(color)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(color.opacity(0.15), in: Capsule())
     }
 
     private func refreshStoreKitProducts() async {

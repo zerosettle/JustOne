@@ -135,63 +135,72 @@ struct DebugSettingsView: View {
     }
 
     var body: some View {
+        formContent
+            .navigationTitle("Debug Environment")
+            .navigationBarTitleDisplayMode(.inline)
+            .alert("Claim Entitlement", isPresented: claimAlertBinding) {
+                claimAlertActions
+            } message: {
+                claimAlertMessage
+            }
+            .onAppear { accounts = DebugAccountStore.accounts(for: selectedEnvKey) }
+            .onChange(of: selectedServer) { accounts = DebugAccountStore.accounts(for: selectedEnvKey) }
+            .onChange(of: selectedMode) { accounts = DebugAccountStore.accounts(for: selectedEnvKey) }
+    }
+
+    private var formContent: some View {
         Form {
             environmentSection
             accountsSection
+            if activeUserId != nil { claimEntitlementsSection }
+            if activeUserId != nil { activeUserSection }
+        }
+    }
 
-            // MARK: Claim Entitlements
+    private var activeUserSection: some View {
+        Section {
+            LabeledContent("Active User ID") {
+                Text(activeUserId ?? "—")
+                    .font(.caption.monospaced())
+                    .foregroundColor(.secondary)
+                    .textSelection(.enabled)
+            }
+        }
+    }
 
-            if activeUserId != nil {
-                claimEntitlementsSection
-            }
+    // MARK: - Claim Alert
 
-            if activeUserId != nil {
-                Section {
-                    LabeledContent("Active User ID") {
-                        Text(activeUserId ?? "—")
-                            .font(.caption.monospaced())
-                            .foregroundColor(.secondary)
-                            .textSelection(.enabled)
-                    }
-                }
+    private var claimAlertBinding: Binding<Bool> {
+        Binding(get: { claimTarget != nil }, set: { if !$0 { claimTarget = nil } })
+    }
+
+    @ViewBuilder
+    private var claimAlertActions: some View {
+        Button("Cancel", role: .cancel) { claimTarget = nil }
+        Button("Claim", role: .destructive) { performClaim() }
+    }
+
+    @ViewBuilder
+    private var claimAlertMessage: some View {
+        if let product = claimTarget {
+            Text("Transfer \"\(product.displayName)\" to this account? This will revoke it from whoever currently owns it.")
+        }
+    }
+
+    private func performClaim() {
+        guard let product = claimTarget, let userId = activeUserId else { return }
+        claimTarget = nil
+        claimInProgress = true
+        claimResult = nil
+        Task {
+            do {
+                try await ZeroSettle.shared.claimEntitlement(productId: product.id, userId: userId)
+                claimResult = "Claimed \(product.displayName)"
+                purchaseManager.creditNewConsumableTokens()
+            } catch {
+                claimResult = "Error: \(error.localizedDescription)"
             }
-        }
-        .navigationTitle("Debug Environment")
-        .navigationBarTitleDisplayMode(.inline)
-        .alert("Claim Entitlement", isPresented: Binding(
-            get: { claimTarget != nil },
-            set: { if !$0 { claimTarget = nil } }
-        )) {
-            Button("Cancel", role: .cancel) { claimTarget = nil }
-            Button("Claim", role: .destructive) {
-                guard let product = claimTarget, let userId = activeUserId else { return }
-                claimTarget = nil
-                claimInProgress = true
-                claimResult = nil
-                Task {
-                    do {
-                        try await ZeroSettle.shared.claimEntitlement(productId: product.id, userId: userId)
-                        claimResult = "Claimed \(product.displayName)"
-                        purchaseManager.creditNewConsumableTokens()
-                    } catch {
-                        claimResult = "Error: \(error.localizedDescription)"
-                    }
-                    claimInProgress = false
-                }
-            }
-        } message: {
-            if let product = claimTarget {
-                Text("Transfer \"\(product.displayName)\" to this account? This will revoke it from whoever currently owns it.")
-            }
-        }
-        .onAppear {
-            accounts = DebugAccountStore.accounts(for: selectedEnvKey)
-        }
-        .onChange(of: selectedServer) {
-            accounts = DebugAccountStore.accounts(for: selectedEnvKey)
-        }
-        .onChange(of: selectedMode) {
-            accounts = DebugAccountStore.accounts(for: selectedEnvKey)
+            claimInProgress = false
         }
     }
 

@@ -379,7 +379,7 @@ struct DebugSettingsView: View {
 
     private func claimRow(product: ZSProduct, entitlement: Entitlement?, hasTransaction: Bool) -> some View {
         let owned = entitlement != nil
-        let isCancelled = entitlement?.status == .cancelled
+        let isCancelled = entitlement?.isCancelled ?? false
         return HStack {
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 6) {

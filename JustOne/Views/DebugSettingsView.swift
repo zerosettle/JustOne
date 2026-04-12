@@ -312,23 +312,13 @@ struct DebugSettingsView: View {
         // 5. Refresh account list for new env
         accounts = DebugAccountStore.accounts(for: newEnvKey)
 
-        // 6. Look up last-active account for new env and sign in + bootstrap.
+        // 6. Look up last-active account for new env and sign in.
+        //    debugSignIn() bumps bootstrapTrigger, which re-fires the
+        //    .task(id:) in JustOneApp and bootstraps the SDK automatically.
         if let lastActiveId = DebugAccountStore.lastActiveAccount(for: newEnvKey),
            let account = accounts.first(where: { $0.id == lastActiveId }) {
-            let userId = authViewModel.debugSignIn(userId: account.id, label: account.label)
-            Task {
-                do {
-                    let catalog = try await ZeroSettle.shared.bootstrap(
-                        userId: userId,
-                        name: account.label,
-                        email: "\(account.label.lowercased().filter { $0.isLetter })@gmail.com"
-                    )
-                    purchaseManager.creditNewConsumableTokens()
-                    statusMessage = "Restored \(account.label) — \(catalog.products.count) products loaded"
-                } catch {
-                    statusMessage = "Error: \(error.localizedDescription)"
-                }
-            }
+            authViewModel.debugSignIn(userId: account.id, label: account.label)
+            statusMessage = "Restored \(account.label) — bootstrapping…"
         } else {
             statusMessage = "Switched to \(envDisplayName) — signed out"
         }
@@ -355,23 +345,10 @@ struct DebugSettingsView: View {
         ZeroSettle.shared.logout()
 
         DebugAccountStore.setLastActive(accountId: account.id, for: DebugEnvironment.currentEnvKey)
-        let userId = authViewModel.debugSignIn(userId: account.id, label: account.label)
-        statusMessage = nil
-
-        // .task(id: isAuthenticated) won't re-fire (true→true), so bootstrap here.
-        Task {
-            do {
-                let catalog = try await ZeroSettle.shared.bootstrap(
-                    userId: userId,
-                    name: account.label,
-                    email: "\(account.label.lowercased().filter { $0.isLetter })@gmail.com"
-                )
-                purchaseManager.creditNewConsumableTokens()
-                statusMessage = "Switched — \(catalog.products.count) products loaded"
-            } catch {
-                statusMessage = "Error: \(error.localizedDescription)"
-            }
-        }
+        // debugSignIn() bumps bootstrapTrigger → .task(id:) in JustOneApp
+        // re-fires and bootstraps the SDK for the new user automatically.
+        authViewModel.debugSignIn(userId: account.id, label: account.label)
+        statusMessage = "Switching…"
     }
 }
 #endif

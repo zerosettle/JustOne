@@ -18,6 +18,9 @@ final class AuthViewModel {
     private(set) var isAuthenticated = false
     private(set) var isLoading = false
     private(set) var hasRestoredSession = false
+    /// Incremented on every sign-in (including account switches) so the
+    /// `.task(id:)` in JustOneApp re-fires and re-bootstraps the SDK.
+    private(set) var bootstrapTrigger: Int = 0
 
     private static let appleUserIDKey = "appleUserID"
     private static let userDefaultsKey = "storedUser"
@@ -113,6 +116,7 @@ final class AuthViewModel {
         saveUserToDefaults(user)
         currentUser = user
         isAuthenticated = true
+        bootstrapTrigger += 1
     }
 
     // MARK: - Sign Out
@@ -167,6 +171,7 @@ extension AuthViewModel {
         saveUserToDefaults(user)
         currentUser = user
         isAuthenticated = true
+        bootstrapTrigger += 1
         return userId
     }
 }

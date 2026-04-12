@@ -46,16 +46,25 @@ struct JustOneApp: App {
                 // This prevents the race where restoreSession() sets isAuthenticated=true
                 // mid-execution, triggering bootstrap, which then gets cancelled when
                 // restoreSession() updates other state (isLoading, hasRestoredSession).
-                .task(id: authViewModel.hasRestoredSession) {
-                    if authViewModel.isAuthenticated, authViewModel.hasRestoredSession,
-                       let userId = authViewModel.appleUserID {
+                // SDK PATTERN: bootstrapTrigger increments on every sign-in
+                // (including account switches), so this task re-fires and
+                // re-bootstraps the SDK for the new user.
+                .task(id: "\(authViewModel.hasRestoredSession)_\(authViewModel.bootstrapTrigger)") {
+                    guard authViewModel.isAuthenticated, authViewModel.hasRestoredSession,
+                          let userId = authViewModel.appleUserID else { return }
+
+                    let name = authViewModel.currentUser?.displayName
+                    let email = authViewModel.currentUser?.email
+                        ?? name.flatMap { n in
+                            let parts = n.lowercased().split(separator: " ")
+                            return parts.isEmpty || n == "Friend" ? nil : parts.joined(separator: "") + "@gmail.com"
+                        }
+
+                    // Retry up to 3 times — bootstrap can fail transiently
+                    // from task cancellation races or server hiccups.
+                    for attempt in 1...3 {
+                        guard !Task.isCancelled else { return }
                         do {
-                            let name = authViewModel.currentUser?.displayName
-                            let email = authViewModel.currentUser?.email
-                                ?? name.flatMap { n in
-                                    let parts = n.lowercased().split(separator: " ")
-                                    return parts.isEmpty || n == "Friend" ? nil : parts.joined(separator: "") + "@gmail.com"
-                                }
                             let catalog = try await ZeroSettle.shared.bootstrap(
                                 userId: userId,
                                 name: name == "Friend" ? nil : name,
@@ -65,10 +74,14 @@ struct JustOneApp: App {
                             for p in ZeroSettle.shared.products {
                                 AppLogger.iap.info("  \(p.id): storeKit=\(p.storeKitPrice?.formatted ?? "nil"), web=\(p.webPrice?.formatted ?? "nil"), savings=\(p.savingsPercent.map(String.init) ?? "nil"), trial=\(p.freeTrialDuration ?? "nil"), trialEligible=\(p.isTrialEligible.map(String.init) ?? "nil")")
                             }
+                            purchaseManager.creditNewConsumableTokens()
+                            return
                         } catch {
-                            AppLogger.iap.error("Bootstrap failed: \(error)")
+                            AppLogger.iap.error("Bootstrap attempt \(attempt)/3 failed: \(error)")
+                            if attempt < 3 {
+                                try? await Task.sleep(nanoseconds: 2_000_000_000)
+                            }
                         }
-                        purchaseManager.creditNewConsumableTokens()
                     }
                 }
                 // SDK PATTERN: entitlementUpdates stream for real-time sync.

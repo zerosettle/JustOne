@@ -351,10 +351,21 @@ struct DebugSettingsView: View {
             }
 
             ForEach(claimable) { product in
+                let owned = ZeroSettle.shared.hasActiveEntitlement(for: product.id)
                 HStack {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(product.displayName)
-                            .font(.subheadline.weight(.medium))
+                        HStack(spacing: 6) {
+                            Text(product.displayName)
+                                .font(.subheadline.weight(.medium))
+                            if owned {
+                                Text("OWNED")
+                                    .font(.caption2.weight(.bold))
+                                    .foregroundColor(.green)
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 2)
+                                    .background(Color.green.opacity(0.15), in: Capsule())
+                            }
+                        }
                         Text(product.id)
                             .font(.caption.monospaced())
                             .foregroundColor(.secondary)
@@ -362,13 +373,18 @@ struct DebugSettingsView: View {
 
                     Spacer()
 
-                    Button("Claim") {
-                        claimTarget = product
+                    if owned {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundColor(.green)
+                    } else {
+                        Button("Claim") {
+                            claimTarget = product
+                        }
+                        .font(.caption.weight(.semibold))
+                        .buttonStyle(.bordered)
+                        .tint(.orange)
+                        .disabled(claimInProgress)
                     }
-                    .font(.caption.weight(.semibold))
-                    .buttonStyle(.bordered)
-                    .tint(.orange)
-                    .disabled(claimInProgress)
                 }
             }
 

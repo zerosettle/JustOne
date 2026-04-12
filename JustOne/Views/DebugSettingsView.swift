@@ -112,6 +112,9 @@ struct DebugSettingsView: View {
 
     @State private var accounts: [DebugAccount] = []
     @State private var newAccountLabel = ""
+    @State private var claimTarget: ZSProduct?
+    @State private var claimInProgress = false
+    @State private var claimResult: String?
 
     private var selectedEnvKey: String {
         DebugEnvironment.envKey(server: selectedServer, mode: selectedMode)
@@ -133,8 +136,69 @@ struct DebugSettingsView: View {
 
     var body: some View {
         Form {
-            // MARK: Environment
+            environmentSection
+            accountsSection
 
+            // MARK: Claim Entitlements
+
+            if activeUserId != nil {
+                claimEntitlementsSection
+            }
+
+            if activeUserId != nil {
+                Section {
+                    LabeledContent("Active User ID") {
+                        Text(activeUserId ?? "—")
+                            .font(.caption.monospaced())
+                            .foregroundColor(.secondary)
+                            .textSelection(.enabled)
+                    }
+                }
+            }
+        }
+        .navigationTitle("Debug Environment")
+        .navigationBarTitleDisplayMode(.inline)
+        .alert("Claim Entitlement", isPresented: Binding(
+            get: { claimTarget != nil },
+            set: { if !$0 { claimTarget = nil } }
+        )) {
+            Button("Cancel", role: .cancel) { claimTarget = nil }
+            Button("Claim", role: .destructive) {
+                guard let product = claimTarget, let userId = activeUserId else { return }
+                claimTarget = nil
+                claimInProgress = true
+                claimResult = nil
+                Task {
+                    do {
+                        try await ZeroSettle.shared.claimEntitlement(productId: product.id, userId: userId)
+                        claimResult = "Claimed \(product.displayName)"
+                        purchaseManager.creditNewConsumableTokens()
+                    } catch {
+                        claimResult = "Error: \(error.localizedDescription)"
+                    }
+                    claimInProgress = false
+                }
+            }
+        } message: {
+            if let product = claimTarget {
+                Text("Transfer \"\(product.displayName)\" to this account? This will revoke it from whoever currently owns it.")
+            }
+        }
+        .onAppear {
+            accounts = DebugAccountStore.accounts(for: selectedEnvKey)
+        }
+        .onChange(of: selectedServer) {
+            accounts = DebugAccountStore.accounts(for: selectedEnvKey)
+        }
+        .onChange(of: selectedMode) {
+            accounts = DebugAccountStore.accounts(for: selectedEnvKey)
+        }
+    }
+
+    // MARK: - Environment Section
+
+    private var environmentSection: some View {
+        Group {
             Section("Server") {
                 Picker("Server", selection: $selectedServer) {
                     ForEach(DebugServer.allCases) { server in
@@ -159,7 +223,6 @@ struct DebugSettingsView: View {
                         .font(.caption.monospaced())
                         .foregroundColor(.secondary)
                 }
-
                 LabeledContent("API Key") {
                     Text(String(resolvedKey.prefix(20)) + "...")
                         .font(.caption.monospaced())
@@ -195,10 +258,13 @@ struct DebugSettingsView: View {
                     }
                 }
             }
+        }
+    }
 
-            // MARK: Accounts
+    // MARK: - Accounts Section
 
-            Section("Test Accounts — \(envDisplayName)") {
+    private var accountsSection: some View {
+        Section("Test Accounts — \(envDisplayName)") {
                 if accounts.isEmpty {
                     Text("No test accounts for this environment.")
                         .font(.caption)
@@ -257,28 +323,60 @@ struct DebugSettingsView: View {
                     .disabled(newAccountLabel.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
             }
+    }
 
-            if activeUserId != nil {
-                Section {
-                    LabeledContent("Active User ID") {
-                        Text(activeUserId ?? "—")
+    // MARK: - Claim Entitlements Section
+
+    private var claimEntitlementsSection: some View {
+        Section {
+            let claimable = ZeroSettle.shared.products.filter {
+                $0.type == .autoRenewableSubscription ||
+                $0.type == .nonRenewingSubscription ||
+                $0.type == .nonConsumable
+            }
+
+            if claimable.isEmpty {
+                Text("No claimable products (bootstrap first)")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+
+            ForEach(claimable) { product in
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(product.displayName)
+                            .font(.subheadline.weight(.medium))
+                        Text(product.id)
                             .font(.caption.monospaced())
                             .foregroundColor(.secondary)
-                            .textSelection(.enabled)
                     }
+
+                    Spacer()
+
+                    Button("Claim") {
+                        claimTarget = product
+                    }
+                    .font(.caption.weight(.semibold))
+                    .buttonStyle(.bordered)
+                    .tint(.orange)
+                    .disabled(claimInProgress)
                 }
             }
-        }
-        .navigationTitle("Debug Environment")
-        .navigationBarTitleDisplayMode(.inline)
-        .onAppear {
-            accounts = DebugAccountStore.accounts(for: selectedEnvKey)
-        }
-        .onChange(of: selectedServer) {
-            accounts = DebugAccountStore.accounts(for: selectedEnvKey)
-        }
-        .onChange(of: selectedMode) {
-            accounts = DebugAccountStore.accounts(for: selectedEnvKey)
+
+            if let claimResult {
+                HStack {
+                    Image(systemName: claimResult.hasPrefix("Error")
+                          ? "xmark.circle.fill" : "checkmark.circle.fill")
+                        .foregroundColor(claimResult.hasPrefix("Error") ? .red : .green)
+                    Text(claimResult)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+        } header: {
+            Text("Claim Entitlements")
+        } footer: {
+            Text("Transfer a StoreKit entitlement from another ZeroSettle account to the current one. Only for subscriptions and non-consumables.")
         }
     }
 

@@ -21,3 +21,6 @@ justone.log
 
 # Xcode breakpoints (user-specific)
 *.xcbkptlist
+
+# Planning artifacts
+docs/

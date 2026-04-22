@@ -323,6 +323,8 @@ struct CancelFlowView: View {
                 .first(where: { $0.activationState == .foregroundActive }) {
                 try? await AppStore.showManageSubscriptions(in: windowScene)
             }
+            // Sheet dismissal doesn't fire Transaction.updates — refresh explicitly.
+            await purchaseManager.syncWithSDK(userId: userId)
         } else {
             do {
                 try await ZeroSettle.shared.cancelSubscription(productId: tier.productId, userId: userId)

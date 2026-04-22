@@ -75,15 +75,8 @@ struct SettingsView: View {
                     AccountCardView(user: authViewModel.currentUser, habits: habits, zeroSettleUserId: authViewModel.appleUserID)
                     weeklyReflectionCard
 
-                    // SDK PATTERN: Custom offer card using ZSOfferManager.
-                    // Observes the shared offer manager for eligibility, renders a
-                    // custom card, and triggers checkout via .checkoutSheet.
-                    OfferCardView(
-                        userId: authViewModel.appleUserID ?? "",
-                        onCheckoutCompleted: {
-                            Task { await purchaseManager.syncWithSDK(userId: authViewModel.appleUserID ?? "") }
-                        }
-                    )
+                    // TEMP: Using SDK's built-in OfferTipView for testing
+                    OfferTipView(userId: authViewModel.appleUserID ?? "")
 
                     SubscriptionCardView(
                         showPremiumUpsell: $showPremiumUpsell,
@@ -296,6 +289,11 @@ struct SettingsView: View {
             .compactMap({ $0 as? UIWindowScene })
             .first(where: { $0.activationState == .foregroundActive }) else { return }
         try? await AppStore.showManageSubscriptions(in: windowScene)
+        // Apple's sheet dismissal doesn't fire Transaction.updates — refresh
+        // entitlements explicitly so the UI reflects any willRenew change.
+        if let userId = authViewModel.appleUserID {
+            await purchaseManager.syncWithSDK(userId: userId)
+        }
     }
 
     @MainActor

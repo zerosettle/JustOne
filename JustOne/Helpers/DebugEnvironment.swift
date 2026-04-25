@@ -43,8 +43,10 @@ enum DebugMode: String, CaseIterable, Identifiable {
 // "zs_pk_test_*" → sandbox/testing backend (no real charges)
 enum DebugEnvironment {
 
-    private static let serverKey = "debug_server"
-    private static let modeKey   = "debug_mode"
+    private static let serverKey             = "debug_server"
+    private static let modeKey               = "debug_mode"
+    private static let demoModeKey           = "debug_offer_demo_mode"
+    private static let forcedJurisdictionKey = "debug_forced_jurisdiction"
 
     // MARK: - Current Selection
 
@@ -64,6 +66,26 @@ enum DebugEnvironment {
             return value
         }
         set { UserDefaults.standard.set(newValue.rawValue, forKey: modeKey) }
+    }
+
+    static var demoMode: Bool {
+        get { UserDefaults.standard.bool(forKey: demoModeKey) }
+        set { UserDefaults.standard.set(newValue, forKey: demoModeKey) }
+    }
+
+    static var forcedJurisdiction: Jurisdiction? {
+        get {
+            guard let raw = UserDefaults.standard.string(forKey: forcedJurisdictionKey),
+                  let value = Jurisdiction(rawValue: raw) else { return nil }
+            return value
+        }
+        set {
+            if let newValue {
+                UserDefaults.standard.set(newValue.rawValue, forKey: forcedJurisdictionKey)
+            } else {
+                UserDefaults.standard.removeObject(forKey: forcedJurisdictionKey)
+            }
+        }
     }
 
     // MARK: - Key Lookup
@@ -106,6 +128,12 @@ enum DebugEnvironment {
         let m = mode
         ZeroSettle.baseURLOverride = baseURL(server: s)
         ZeroSettle.shared.configure(.init(publishableKey: apiKey(server: s, mode: m), preloadCheckout: true))
+
+        // Apply offer-preview debug toggles. Must run AFTER configure(...) so the
+        // SDK has bootstrapped the ZSOfferManager / ZeroSettle singletons before
+        // we mutate their debug state.
+        ZSOfferManager.demoMode = demoMode
+        ZeroSettle.shared.forcedJurisdiction = forcedJurisdiction
     }
 }
 #endif

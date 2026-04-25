@@ -106,8 +106,10 @@ struct DebugSettingsView: View {
     @Environment(AuthViewModel.self) private var authViewModel
     @Environment(PurchaseManager.self) private var purchaseManager
 
-    @State private var selectedServer = DebugEnvironment.server
-    @State private var selectedMode   = DebugEnvironment.mode
+    @State private var selectedServer         = DebugEnvironment.server
+    @State private var selectedMode           = DebugEnvironment.mode
+    @State private var demoModeEnabled        = DebugEnvironment.demoMode
+    @State private var selectedJurisdiction: Jurisdiction? = DebugEnvironment.forcedJurisdiction
     @State private var isApplying = false
     @State private var statusMessage: String?
 
@@ -240,6 +242,26 @@ struct DebugSettingsView: View {
                         .font(.caption.monospaced())
                         .foregroundColor(.secondary)
                 }
+            }
+
+            Section {
+                Toggle("Demo Mode", isOn: $demoModeEnabled)
+                Picker("Jurisdiction Override", selection: $selectedJurisdiction) {
+                    Text("Real detection").tag(Jurisdiction?.none)
+                    Text("US").tag(Jurisdiction?.some(.us))
+                    Text("EU").tag(Jurisdiction?.some(.eu))
+                    Text("ROW").tag(Jurisdiction?.some(.row))
+                }
+            } header: {
+                Text("Offer Preview")
+            } footer: {
+                Text(
+                    "Demo Mode renders the tenant-configured migration/upgrade tip without "
+                    + "requiring a real StoreKit subscription. Checkout is disabled in demo "
+                    + "mode — tapping the CTA shows an alert instead of opening billing. "
+                    + "Jurisdiction Override simulates a different device storefront for "
+                    + "testing region gating."
+                )
             }
 
             Section {
@@ -471,9 +493,11 @@ struct DebugSettingsView: View {
         // 3. Reset purchase state — zeros tokens/known entitlements
         purchaseManager.debugReset()
 
-        // 4. Persist new server/mode and reconfigure SDK
-        DebugEnvironment.server = selectedServer
-        DebugEnvironment.mode = selectedMode
+        // 4. Persist new server/mode + offer-preview toggles, then reconfigure SDK
+        DebugEnvironment.server              = selectedServer
+        DebugEnvironment.mode                = selectedMode
+        DebugEnvironment.demoMode            = demoModeEnabled
+        DebugEnvironment.forcedJurisdiction  = selectedJurisdiction
         DebugEnvironment.apply()
 
         let newEnvKey = DebugEnvironment.currentEnvKey

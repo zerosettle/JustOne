@@ -53,6 +53,9 @@ struct JustOneApp: App {
                     guard authViewModel.isAuthenticated, authViewModel.hasRestoredSession,
                           let userId = authViewModel.appleUserID else { return }
 
+                    authViewModel.isBootstrapping = true
+                    defer { authViewModel.isBootstrapping = false }
+
                     let name = authViewModel.currentUser?.displayName
                     let email = authViewModel.currentUser?.email
                         ?? name.flatMap { n in

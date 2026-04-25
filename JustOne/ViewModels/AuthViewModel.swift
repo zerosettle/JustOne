@@ -21,6 +21,9 @@ final class AuthViewModel {
     /// Incremented on every sign-in (including account switches) so the
     /// `.task(id:)` in JustOneApp re-fires and re-bootstraps the SDK.
     private(set) var bootstrapTrigger: Int = 0
+    /// True while the bootstrap task in JustOneApp is running. UI observes
+    /// this to show loading feedback during account switches.
+    var isBootstrapping = false
 
     private static let appleUserIDKey = "appleUserID"
     private static let userDefaultsKey = "storedUser"

@@ -296,6 +296,10 @@ struct DebugSettingsView: View {
                                         .padding(.horizontal, 6)
                                         .padding(.vertical, 2)
                                         .background(Color.green.opacity(0.15), in: Capsule())
+                                    if authViewModel.isBootstrapping {
+                                        ProgressView()
+                                            .controlSize(.mini)
+                                    }
                                 }
                             }
                             Text("ZS: " + account.id)
@@ -307,11 +311,19 @@ struct DebugSettingsView: View {
                         Spacer()
 
                         if account.id != activeUserId {
-                            Button("Switch") {
+                            Button {
                                 switchTo(account)
+                            } label: {
+                                if authViewModel.isBootstrapping {
+                                    ProgressView()
+                                        .controlSize(.mini)
+                                } else {
+                                    Text("Switch")
+                                }
                             }
                             .font(.caption.weight(.semibold))
                             .buttonStyle(.bordered)
+                            .disabled(authViewModel.isBootstrapping)
                         }
                     }
                 }

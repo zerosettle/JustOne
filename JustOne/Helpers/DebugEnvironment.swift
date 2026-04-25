@@ -72,8 +72,8 @@ enum DebugEnvironment {
         switch (server, mode) {
         case (.production, .live):    return "zs_pk_live_2c44f5c468ff4907322a0f8825e976bce0a7be46571af88b"
         case (.production, .sandbox): return "zs_pk_test_c2f95d4995ab13385b6064d4af428eb7cc3d0218a9754b41"
-        case (.staging, .live):       return "TBD"
-        case (.staging, .sandbox):    return "zs_pk_test_14084b1fb839050da91618be8c8dca1ff08dc28398a02d2e"
+        case (.staging, .live):       return "zs_pk_live_893e511699f82bb6453d7cefcfbd33e0b7e14a3cf5baa3b2"
+        case (.staging, .sandbox):    return "zs_pk_test_68314ca8d4a87a4c44adc978aef6523deae4296cc1a325a3"
         case (.localhost, .live):     return "zs_pk_live_a7c77a4e93d342b5f480991444f77e4407a40eaa1041b34d"
         case (.localhost, .sandbox):  return "zs_pk_test_b222d1df61e2a564426f5814910841817e317dbbaa277335"
         }

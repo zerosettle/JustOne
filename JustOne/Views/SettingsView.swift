@@ -75,7 +75,6 @@ struct SettingsView: View {
                     AccountCardView(user: authViewModel.currentUser, habits: habits, zeroSettleUserId: authViewModel.appleUserID)
                     weeklyReflectionCard
 
-                    // TEMP: Using SDK's built-in OfferTipView for testing
                     OfferTipView(userId: authViewModel.appleUserID ?? "")
 
                     SubscriptionCardView(

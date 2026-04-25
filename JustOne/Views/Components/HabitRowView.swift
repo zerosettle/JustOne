@@ -20,7 +20,7 @@ struct HabitRowView: View {
     private let today = Date()
 
     private var isAutoCompletedToday: Bool {
-        isAutoCompletedToday
+        habit.isAutoCompleted(on: today)
     }
 
     var body: some View {

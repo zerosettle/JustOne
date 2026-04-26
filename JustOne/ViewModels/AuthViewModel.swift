@@ -9,7 +9,6 @@
 
 import SwiftUI
 import AuthenticationServices
-import OSLog
 import ZeroSettleKit
 
 @MainActor
@@ -44,10 +43,8 @@ final class AuthViewModel {
     /// Reads the stored Apple user ID from Keychain, verifies credential
     /// state with Apple, and restores the session if still authorized.
     func restoreSession() async {
-        AppLogger.iap.info("[diag] restoreSession entry")
         guard let data = KeychainHelper.read(for: Self.appleUserIDKey),
               let userID = String(data: data, encoding: .utf8) else {
-            AppLogger.iap.info("[diag] restoreSession: no keychain entry — flipping hasRestoredSession=true")
             hasRestoredSession = true
             return
         }
@@ -58,23 +55,19 @@ final class AuthViewModel {
         // Debug accounts use synthetic UUIDs that Apple won't recognize.
         // Skip credential verification and restore directly from UserDefaults.
         if isDebugAccount(userID), let user = loadUserFromDefaults() {
-            AppLogger.iap.info("[diag] restoreSession: debug branch userID=\(userID)")
             currentUser = user
             isAuthenticated = true
             isLoading = false
             hasRestoredSession = true
-            AppLogger.iap.info("[diag] restoreSession: debug branch DONE — all 4 mutations applied")
             return
         }
         #endif
 
-        AppLogger.iap.info("[diag] restoreSession: apple branch userID=\(userID)")
         let state: ASAuthorizationAppleIDProvider.CredentialState = await withCheckedContinuation { continuation in
             ASAuthorizationAppleIDProvider().getCredentialState(forUserID: userID) { credentialState, _ in
                 continuation.resume(returning: credentialState)
             }
         }
-        AppLogger.iap.info("[diag] restoreSession: apple credential state=\(state.rawValue)")
 
         if state == .authorized, let user = loadUserFromDefaults() {
             currentUser = user
@@ -83,7 +76,6 @@ final class AuthViewModel {
 
         isLoading = false
         hasRestoredSession = true
-        AppLogger.iap.info("[diag] restoreSession: apple branch DONE")
     }
 
     // MARK: - Handle Authorization
@@ -166,7 +158,6 @@ extension AuthViewModel {
     /// Returns the new userId so callers can re-bootstrap.
     @discardableResult
     func debugSignIn(userId: String, label: String) -> String {
-        AppLogger.iap.info("[diag] debugSignIn entry userId=\(userId) label=\(label)")
         if let data = userId.data(using: .utf8) {
             KeychainHelper.save(data, for: Self.appleUserIDKey)
         }

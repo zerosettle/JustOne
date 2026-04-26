@@ -75,7 +75,24 @@ struct SettingsView: View {
                     AccountCardView(user: authViewModel.currentUser, habits: habits, zeroSettleUserId: authViewModel.appleUserID)
                     weeklyReflectionCard
 
-                    OfferTipView(userId: authViewModel.appleUserID ?? "")
+                    VStack(alignment: .leading, spacing: 6) {
+                        #if DEBUG
+                        if ZSOfferManager.demoMode {
+                            HStack(spacing: 6) {
+                                Image(systemName: "wrench.and.screwdriver.fill")
+                                    .font(.caption2.weight(.bold))
+                                Text("DEMO MODE")
+                                    .font(.caption2.weight(.bold))
+                            }
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color.orange, in: Capsule())
+                        }
+                        #endif
+
+                        OfferTipView(userId: authViewModel.appleUserID ?? "")
+                    }
 
                     SubscriptionCardView(
                         showPremiumUpsell: $showPremiumUpsell,

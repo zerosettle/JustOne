@@ -108,7 +108,7 @@ struct DebugSettingsView: View {
 
     @State private var selectedServer         = DebugEnvironment.server
     @State private var selectedMode           = DebugEnvironment.mode
-    @State private var demoModeEnabled        = DebugEnvironment.demoMode
+    @State private var selectedDemoMode       = DebugEnvironment.demoMode
     @State private var selectedJurisdiction: Jurisdiction? = DebugEnvironment.forcedJurisdiction
     @State private var isApplying = false
     @State private var statusMessage: String?
@@ -120,6 +120,7 @@ struct DebugSettingsView: View {
     @State private var claimResult: String?
     /// Product IDs that have active StoreKit transactions on this Apple ID.
     @State private var storeKitProductIds: Set<String> = []
+    @State private var showPrivateOfferDemo = false
 
     private var selectedEnvKey: String {
         DebugEnvironment.envKey(server: selectedServer, mode: selectedMode)
@@ -148,6 +149,12 @@ struct DebugSettingsView: View {
             } message: {
                 claimAlertMessage
             }
+            .fullScreenCover(isPresented: $showPrivateOfferDemo) {
+                PrivateOfferDemoView(
+                    userId: activeUserId ?? "",
+                    onDismiss: { showPrivateOfferDemo = false }
+                )
+            }
             .onAppear { accounts = DebugAccountStore.accounts(for: selectedEnvKey) }
             .onChange(of: selectedServer) { accounts = DebugAccountStore.accounts(for: selectedEnvKey) }
             .onChange(of: selectedMode) { accounts = DebugAccountStore.accounts(for: selectedEnvKey) }
@@ -159,6 +166,26 @@ struct DebugSettingsView: View {
             accountsSection
             if activeUserId != nil { claimEntitlementsSection }
             if activeUserId != nil { activeUserSection }
+            demoSection
+        }
+    }
+
+    private var demoSection: some View {
+        Section("Demo Screens") {
+            Button {
+                showPrivateOfferDemo = true
+            } label: {
+                HStack {
+                    Image(systemName: "sparkles")
+                        .foregroundColor(.justSecondary)
+                    Text("Private Offer Splash")
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            .disabled(activeUserId == nil)
         }
     }
 
@@ -245,7 +272,11 @@ struct DebugSettingsView: View {
             }
 
             Section {
-                Toggle("Demo Mode", isOn: $demoModeEnabled)
+                Picker("Demo Mode", selection: $selectedDemoMode) {
+                    Text("Off").tag(ZSDemoMode.off)
+                    Text("Switch & Save").tag(ZSDemoMode.migration)
+                    Text("Upgrade & Save").tag(ZSDemoMode.upgrade)
+                }
                 Picker("Jurisdiction Override", selection: $selectedJurisdiction) {
                     Text("Real detection").tag(Jurisdiction?.none)
                     Text("US").tag(Jurisdiction?.some(.us))
@@ -256,11 +287,10 @@ struct DebugSettingsView: View {
                 Text("Offer Preview")
             } footer: {
                 Text(
-                    "Demo Mode renders the tenant-configured migration/upgrade tip without "
-                    + "requiring a real StoreKit subscription. Checkout is disabled in demo "
-                    + "mode — tapping the CTA shows an alert instead of opening billing. "
-                    + "Jurisdiction Override simulates a different device storefront for "
-                    + "testing region gating."
+                    "Demo Mode renders the chosen tenant-configured tip without requiring a "
+                    + "real StoreKit subscription. Checkout is disabled in demo mode — tapping "
+                    + "the CTA shows an alert instead of opening billing. Jurisdiction "
+                    + "Override simulates a different device storefront for testing region gating."
                 )
             }
 
@@ -496,7 +526,7 @@ struct DebugSettingsView: View {
         // 4. Persist new server/mode + offer-preview toggles, then reconfigure SDK
         DebugEnvironment.server              = selectedServer
         DebugEnvironment.mode                = selectedMode
-        DebugEnvironment.demoMode            = demoModeEnabled
+        DebugEnvironment.demoMode            = selectedDemoMode
         DebugEnvironment.forcedJurisdiction  = selectedJurisdiction
         DebugEnvironment.apply()
 

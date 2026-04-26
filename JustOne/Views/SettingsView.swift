@@ -77,11 +77,11 @@ struct SettingsView: View {
 
                     VStack(alignment: .leading, spacing: 6) {
                         #if DEBUG
-                        if ZSOfferManager.demoMode {
+                        if ZSOfferManager.demoMode.isActive {
                             HStack(spacing: 6) {
                                 Image(systemName: "wrench.and.screwdriver.fill")
                                     .font(.caption2.weight(.bold))
-                                Text("DEMO MODE")
+                                Text("DEMO MODE — \(ZSOfferManager.demoMode.rawValue.uppercased())")
                                     .font(.caption2.weight(.bold))
                             }
                             .foregroundColor(.white)

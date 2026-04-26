@@ -68,9 +68,13 @@ enum DebugEnvironment {
         set { UserDefaults.standard.set(newValue.rawValue, forKey: modeKey) }
     }
 
-    static var demoMode: Bool {
-        get { UserDefaults.standard.bool(forKey: demoModeKey) }
-        set { UserDefaults.standard.set(newValue, forKey: demoModeKey) }
+    static var demoMode: ZSDemoMode {
+        get {
+            guard let raw = UserDefaults.standard.string(forKey: demoModeKey),
+                  let value = ZSDemoMode(rawValue: raw) else { return .off }
+            return value
+        }
+        set { UserDefaults.standard.set(newValue.rawValue, forKey: demoModeKey) }
     }
 
     static var forcedJurisdiction: Jurisdiction? {

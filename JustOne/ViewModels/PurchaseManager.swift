@@ -179,6 +179,7 @@ final class PurchaseManager {
 
     /// Restores entitlements from the SDK and credits any new consumable tokens.
     func syncWithSDK(userId: String) async {
+        AppLogger.iap.info("[diag] syncWithSDK entry userId=\(userId)")
         do {
             try await ZeroSettle.shared.restoreEntitlements(userId: userId)
             creditNewConsumableTokens()

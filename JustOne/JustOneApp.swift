@@ -38,7 +38,11 @@ struct JustOneApp: App {
                 .environment(purchaseManager)
                 // SDK PATTERN: Wire up the delegate for checkout lifecycle callbacks.
                 .onAppear { ZeroSettle.shared.delegate = purchaseManager }
-                .task { await authViewModel.restoreSession() }
+                .task {
+                    AppLogger.iap.info("[diag] task1 (restoreSession) firing")
+                    await authViewModel.restoreSession()
+                    AppLogger.iap.info("[diag] task1 (restoreSession) returned")
+                }
                 // SDK PATTERN: bootstrap() fetches the product catalog, restores
                 // entitlements, and starts the StoreKit transaction listener — all in
                 // one call. You do NOT need to call restoreEntitlements() separately.
@@ -50,8 +54,12 @@ struct JustOneApp: App {
                 // (including account switches), so this task re-fires and
                 // re-bootstraps the SDK for the new user.
                 .task(id: "\(authViewModel.hasRestoredSession)_\(authViewModel.bootstrapTrigger)") {
+                    AppLogger.iap.info("[diag] task2 (bootstrap) firing — hasRestored=\(authViewModel.hasRestoredSession) authed=\(authViewModel.isAuthenticated) trigger=\(authViewModel.bootstrapTrigger) userId=\(authViewModel.appleUserID ?? "nil")")
                     guard authViewModel.isAuthenticated, authViewModel.hasRestoredSession,
-                          let userId = authViewModel.appleUserID else { return }
+                          let userId = authViewModel.appleUserID else {
+                        AppLogger.iap.info("[diag] task2 guard failed — returning without bootstrap")
+                        return
+                    }
 
                     authViewModel.isBootstrapping = true
                     defer { authViewModel.isBootstrapping = false }
@@ -99,11 +107,15 @@ struct JustOneApp: App {
                 // Catches subscription state changes and browser checkout completions.
                 // Debounced to avoid redundant API calls on rapid app switches.
                 .onChange(of: scenePhase) { _, phase in
+                    AppLogger.iap.info("[diag] scenePhase → \(String(describing: phase))")
                     if phase == .active, authViewModel.isAuthenticated, let userId = authViewModel.appleUserID {
                         let now = Date()
                         if lastSyncDate == nil || now.timeIntervalSince(lastSyncDate!) > 30 {
                             lastSyncDate = now
+                            AppLogger.iap.info("[diag] scenePhase active → calling syncWithSDK")
                             Task { await purchaseManager.syncWithSDK(userId: userId) }
+                        } else {
+                            AppLogger.iap.info("[diag] scenePhase active but debounce skipping syncWithSDK")
                         }
                     }
                 }

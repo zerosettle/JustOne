@@ -81,7 +81,7 @@ struct SettingsView: View {
                             HStack(spacing: 6) {
                                 Image(systemName: "wrench.and.screwdriver.fill")
                                     .font(.caption2.weight(.bold))
-                                Text("DEMO MODE — \(ZSOfferManager.demoMode.rawValue.uppercased())")
+                                Text("DEMO MODE — \(ZSOfferManager.demoMode.displayLabel)")
                                     .font(.caption2.weight(.bold))
                             }
                             .foregroundColor(.white)

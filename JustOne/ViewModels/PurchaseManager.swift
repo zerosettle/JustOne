@@ -178,9 +178,11 @@ final class PurchaseManager {
     }
 
     /// Restores entitlements from the SDK and credits any new consumable tokens.
+    /// Caller passes `userId` only for logging context; the SDK reads the
+    /// identified user from internal state set by `identify(.user(...))`.
     func syncWithSDK(userId: String) async {
         do {
-            try await ZeroSettle.shared.restoreEntitlements(userId: userId)
+            try await ZeroSettle.shared.restoreEntitlements()
             creditNewConsumableTokens()
             logSwitchAndSaveEligibility()
         } catch {
@@ -271,21 +273,21 @@ final class PurchaseManager {
 // checkout sheet. Use alongside @Observable and entitlementUpdates for
 // complete observability of the purchase flow.
 extension PurchaseManager: ZeroSettleDelegate {
-    private nonisolated static let delegateLogger = Logger(subsystem: "io.zerosettle.JustOne", category: "IAP")
+    private static let delegateLogger = Logger(subsystem: "io.zerosettle.JustOne", category: "IAP")
 
-    nonisolated func zeroSettleDidPresentCheckout(productId: String) {
-        Self.delegateLogger.info("[Delegate] Checkout presented for \(productId)")
+    func zeroSettleCheckoutDidBegin(productId: String) {
+        Self.delegateLogger.info("[Delegate] Checkout began for \(productId)")
     }
 
-    nonisolated func zeroSettleDidDismissCheckout(productId: String) {
-        Self.delegateLogger.info("[Delegate] Checkout dismissed for \(productId)")
+    func zeroSettleCheckoutDidComplete(transaction: CheckoutTransaction) {
+        Self.delegateLogger.info("[Delegate] Checkout completed for \(transaction.productId)")
     }
 
-    nonisolated func zeroSettleDidCompleteCheckout(productId: String) {
-        Self.delegateLogger.info("[Delegate] Checkout completed for \(productId)")
+    func zeroSettleCheckoutDidCancel(productId: String) {
+        Self.delegateLogger.info("[Delegate] Checkout cancelled for \(productId)")
     }
 
-    nonisolated func zeroSettleDidFailCheckout(productId: String, error: Error) {
+    func zeroSettleCheckoutDidFail(productId: String, error: Error) {
         Self.delegateLogger.error("[Delegate] Checkout failed for \(productId): \(error)")
     }
 }

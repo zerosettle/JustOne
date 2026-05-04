@@ -141,7 +141,7 @@ struct SettingsView: View {
             Text("Your purchases have been restored successfully.")
         }
         .task {
-            guard let userId = authViewModel.appleUserID else { return }
+            guard authViewModel.appleUserID != nil else { return }
 
             // Offer checkout warmup handled internally by OfferCardView's .checkoutSheet
 
@@ -149,8 +149,7 @@ struct SettingsView: View {
             if purchaseManager.canUpgradeToAnnual {
                 do {
                     let config = try await ZeroSettle.shared.fetchUpgradeOfferConfig(
-                        productId: SubscriptionTier.yearly.productId,
-                        userId: userId
+                        productId: SubscriptionTier.yearly.productId
                     )
                     isUpgradeAvailable = config.available
                 } catch {
@@ -317,10 +316,7 @@ struct SettingsView: View {
         guard let tier = purchaseManager.activeSubscription,
               let userId = authViewModel.appleUserID else { return }
         do {
-            try await ZeroSettle.shared.cancelSubscription(
-                productId: tier.productId,
-                userId: userId
-            )
+            try await ZeroSettle.shared.cancelSubscription(productId: tier.productId)
             await purchaseManager.syncWithSDK(userId: userId)
         } catch {
             errorMessage = "Failed to cancel: \(error.localizedDescription)"

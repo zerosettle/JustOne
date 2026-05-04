@@ -291,13 +291,12 @@ struct CancelFlowView: View {
     private func submitPause() async {
         guard let pauseOptionId = selectedPauseOptionId,
               let productId = purchaseManager.activeSubscription?.productId,
-              let userId = authViewModel.appleUserID else { return }
+              authViewModel.appleUserID != nil else { return }
         let durationDays = config?.pause?.options.first { $0.id == pauseOptionId }?.durationDays
         isPauseLoading = true
         do {
             let resumesAt = try await ZeroSettle.shared.pauseSubscription(
                 productId: productId,
-                userId: userId,
                 pauseDurationDays: durationDays
             )
             submitAnalytics(outcome: .paused, pauseAccepted: true, pauseDurationDays: durationDays)
@@ -327,7 +326,7 @@ struct CancelFlowView: View {
             await purchaseManager.syncWithSDK(userId: userId)
         } else {
             do {
-                try await ZeroSettle.shared.cancelSubscription(productId: tier.productId, userId: userId)
+                try await ZeroSettle.shared.cancelSubscription(productId: tier.productId)
                 await purchaseManager.syncWithSDK(userId: userId)
             } catch {
                 isCancelLoading = false

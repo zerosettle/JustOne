@@ -63,24 +63,26 @@ struct JustOneApp: App {
                             return parts.isEmpty || n == "Friend" ? nil : parts.joined(separator: "") + "@gmail.com"
                         }
 
-                    // Retry up to 3 times — bootstrap can fail transiently
+                    // Retry up to 3 times — identify can fail transiently
                     // from task cancellation races or server hiccups.
                     for attempt in 1...3 {
                         guard !Task.isCancelled else { return }
                         do {
-                            let catalog = try await ZeroSettle.shared.bootstrap(
-                                userId: userId,
+                            // .user always returns a non-nil ProductCatalog;
+                            // only .deferred returns nil (we never pass it here).
+                            let catalog = try await ZeroSettle.shared.identify(.user(
+                                id: userId,
                                 name: name == "Friend" ? nil : name,
                                 email: email
-                            )
-                            AppLogger.iap.info("Bootstrap succeeded — \(catalog.products.count) products")
+                            ))!
+                            AppLogger.iap.info("identify succeeded — \(catalog.products.count) products")
                             for p in ZeroSettle.shared.products {
                                 AppLogger.iap.info("  \(p.id): storeKit=\(p.storeKitPrice?.formatted ?? "nil"), web=\(p.webPrice?.formatted ?? "nil"), savings=\(p.savingsPercent.map(String.init) ?? "nil"), trial=\(p.freeTrialDuration ?? "nil"), trialEligible=\(p.isTrialEligible.map(String.init) ?? "nil")")
                             }
                             purchaseManager.creditNewConsumableTokens()
                             return
                         } catch {
-                            AppLogger.iap.error("Bootstrap attempt \(attempt)/3 failed: \(error)")
+                            AppLogger.iap.error("identify attempt \(attempt)/3 failed: \(error)")
                             if attempt < 3 {
                                 try? await Task.sleep(nanoseconds: 2_000_000_000)
                             }

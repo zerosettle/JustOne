@@ -220,13 +220,13 @@ struct DebugSettingsView: View {
     }
 
     private func performClaim() {
-        guard let product = claimTarget, let userId = activeUserId else { return }
+        guard let product = claimTarget, activeUserId != nil else { return }
         claimTarget = nil
         claimInProgress = true
         claimResult = nil
         Task {
             do {
-                try await ZeroSettle.shared.claimEntitlement(productId: product.id, userId: userId)
+                try await ZeroSettle.shared.transferStoreKitOwnershipToCurrentUser(productId: product.id)
                 claimResult = "Claimed \(product.displayName)"
                 purchaseManager.creditNewConsumableTokens()
             } catch {

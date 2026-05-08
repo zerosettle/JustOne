@@ -22,7 +22,7 @@ struct PrivateOfferDemoView: View {
     init(userId: String, onDismiss: @escaping () -> Void) {
         self.userId = userId
         self.onDismiss = onDismiss
-        // `offerManager()` is non-throwing as of ZeroSettleKit 1.4.0 — it
+        // `offerManager()` is non-throwing as of ZeroSettleKit 1.3.4 — it
         // returns a single shared instance that auto-promotes when identify
         // runs.
         _manager = ObservedObject(wrappedValue: ZeroSettle.shared.offerManager())

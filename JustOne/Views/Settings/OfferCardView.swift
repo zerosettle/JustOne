@@ -21,7 +21,7 @@ struct OfferCardView: View {
     init(userId: String, onCheckoutCompleted: (() -> Void)? = nil) {
         self.userId = userId
         self.onCheckoutCompleted = onCheckoutCompleted
-        // `offerManager()` is non-throwing as of ZeroSettleKit 1.4.0 — it
+        // `offerManager()` is non-throwing as of ZeroSettleKit 1.3.4 — it
         // returns a single shared instance that auto-promotes when identify
         // runs, so safe to construct this view before sign-in completes.
         _manager = ObservedObject(wrappedValue: ZeroSettle.shared.offerManager())

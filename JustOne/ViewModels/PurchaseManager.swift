@@ -195,8 +195,13 @@ final class PurchaseManager {
         let storeKit = isStoreKitBilling
         let tierName = activeSubscription?.displayName ?? "none"
         let billingName = billingProvider == .storeKit ? "storeKit" : billingProvider == .direct ? "direct" : "none"
-        let offerState = ZeroSettle.shared.offerManager.map { String(describing: $0.state) } ?? "nil"
-        let hasOffer = ZeroSettle.shared.offerManager?.offerData != nil
+        // Use the function form (`offerManager()`), not the deprecated optional
+        // property — the function is non-throwing and eagerly returns the
+        // shared instance, so this log line will reflect the manager's real
+        // state both pre- and post-identify.
+        let manager = ZeroSettle.shared.offerManager()
+        let offerState = String(describing: manager.state)
+        let hasOffer = manager.offerData != nil
 
         let entitlementSummary = ZeroSettle.shared.activeEntitlements.map {
             "[\($0.productId) source=\($0.source) id=\($0.id)]"

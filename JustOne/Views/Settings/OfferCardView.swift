@@ -21,9 +21,10 @@ struct OfferCardView: View {
     init(userId: String, onCheckoutCompleted: (() -> Void)? = nil) {
         self.userId = userId
         self.onCheckoutCompleted = onCheckoutCompleted
-        // Precondition: identify(.user(...)) has run before this view is constructed.
-        // JustOneApp's bootstrap task identifies on every sign-in.
-        _manager = ObservedObject(wrappedValue: try! ZeroSettle.shared.offerManager())
+        // `offerManager()` is non-throwing as of ZeroSettleKit 1.4.0 — it
+        // returns a single shared instance that auto-promotes when identify
+        // runs, so safe to construct this view before sign-in completes.
+        _manager = ObservedObject(wrappedValue: ZeroSettle.shared.offerManager())
     }
 
     // MARK: - Body

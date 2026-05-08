@@ -122,6 +122,10 @@ struct DebugSettingsView: View {
     @State private var storeKitProductIds: Set<String> = []
     @State private var showPrivateOfferDemo = false
 
+    /// Mirrors `ZeroSettle.shared.applePayAvailability.debugStateOverride` so the
+    /// Picker has a binding. Selecting `.none` (Live) clears the override.
+    @State private var applePayOverride: ApplePayAvailability.State?
+
     private var selectedEnvKey: String {
         DebugEnvironment.envKey(server: selectedServer, mode: selectedMode)
     }
@@ -155,7 +159,10 @@ struct DebugSettingsView: View {
                     onDismiss: { showPrivateOfferDemo = false }
                 )
             }
-            .onAppear { accounts = DebugAccountStore.accounts(for: selectedEnvKey) }
+            .onAppear {
+                accounts = DebugAccountStore.accounts(for: selectedEnvKey)
+                applePayOverride = ZeroSettle.shared.applePayAvailability.debugStateOverride
+            }
             .onChange(of: selectedServer) { accounts = DebugAccountStore.accounts(for: selectedEnvKey) }
             .onChange(of: selectedMode) { accounts = DebugAccountStore.accounts(for: selectedEnvKey) }
     }
@@ -166,7 +173,49 @@ struct DebugSettingsView: View {
             accountsSection
             if activeUserId != nil { claimEntitlementsSection }
             if activeUserId != nil { activeUserSection }
+            applePayAvailabilitySection
             demoSection
+        }
+    }
+
+    private var applePayAvailabilitySection: some View {
+        Section {
+            Picker("State Override", selection: $applePayOverride) {
+                Text("Live (PassKit)").tag(ApplePayAvailability.State?.none)
+                Text("Ready").tag(ApplePayAvailability.State?.some(.ready))
+                Text("Setup Required").tag(ApplePayAvailability.State?.some(.setupRequired))
+                Text("Unavailable").tag(ApplePayAvailability.State?.some(.unavailable))
+            }
+            .onChange(of: applePayOverride) { _, new in
+                ZeroSettle.shared.applePayAvailability.debugStateOverride = new
+            }
+
+            LabeledContent("Current PassKit State") {
+                // Direct read on the @Observable singleton — SwiftUI tracks
+                // the property access during body evaluation and re-renders
+                // automatically when state transitions.
+                Text(applePayStateLabel(ZeroSettle.shared.applePayAvailability.state))
+                    .font(.caption.monospaced())
+                    .foregroundColor(.secondary)
+            }
+        } header: {
+            Text("Apple Pay Availability")
+        } footer: {
+            Text(
+                "Picking any state other than 'Live' forces the SDK into "
+                + "Apple-Pay-only mode and overrides the PassKit-derived state, "
+                + "so the banner / gate code paths fire even on tenants that "
+                + "aren't actually payment_methods=[\"apple_pay\"]. Effective "
+                + "immediately; persists across kill / relaunch."
+            )
+        }
+    }
+
+    private func applePayStateLabel(_ state: ApplePayAvailability.State) -> String {
+        switch state {
+        case .ready:          return "ready"
+        case .setupRequired:  return "setup required"
+        case .unavailable:    return "unavailable"
         }
     }
 

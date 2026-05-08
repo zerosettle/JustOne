@@ -91,7 +91,7 @@ struct SettingsView: View {
                         }
                         #endif
 
-                        OfferTipView(userId: authViewModel.appleUserID ?? "")
+                        OfferTipView()
                     }
 
                     SubscriptionCardView(

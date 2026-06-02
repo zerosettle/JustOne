@@ -6,8 +6,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/zerosettle/ZeroSettleKit.git",
       "state" : {
-        "revision" : "d877fe04109018a567f9f15c0523c24aff7bf6dd",
-        "version" : "1.3.4"
+        "revision" : "8df71aaf00e6e0c28c8abd727b7188351443082d",
+        "version" : "1.5.0"
       }
     }
   ],

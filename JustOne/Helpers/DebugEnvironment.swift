@@ -12,15 +12,18 @@ import Foundation
 import ZeroSettleKit
 
 enum DebugServer: String, CaseIterable, Identifiable {
-    case production, staging, localhost
+    // Declaration order drives picker layout (segmented control reads
+    // `allCases` left-to-right). Order roughly tracks "closer to local"
+    // → "closer to prod" so the most-used dev target is one tap away.
+    case localhost, staging, production
 
     var id: String { rawValue }
 
     var displayName: String {
         switch self {
-        case .production: "Production"
-        case .staging:    "Staging"
         case .localhost:  "Localhost"
+        case .staging:    "Staging"
+        case .production: "Production"
         }
     }
 }
@@ -53,7 +56,7 @@ enum DebugEnvironment {
     static var server: DebugServer {
         get {
             guard let raw = UserDefaults.standard.string(forKey: serverKey),
-                  let value = DebugServer(rawValue: raw) else { return .staging }
+                  let value = DebugServer(rawValue: raw) else { return .production }
             return value
         }
         set { UserDefaults.standard.set(newValue.rawValue, forKey: serverKey) }
@@ -98,10 +101,10 @@ enum DebugEnvironment {
         switch (server, mode) {
         case (.production, .live):    return "zs_pk_live_2c44f5c468ff4907322a0f8825e976bce0a7be46571af88b"
         case (.production, .sandbox): return "zs_pk_test_c2f95d4995ab13385b6064d4af428eb7cc3d0218a9754b41"
-        case (.staging, .live):       return "zs_pk_live_893e511699f82bb6453d7cefcfbd33e0b7e14a3cf5baa3b2"
+        case (.staging, .live):       return "zs_pk_live_b2458fb1a6e49b538fcb2a2ed579de6e3a06fd025a942aee"
         case (.staging, .sandbox):    return "zs_pk_test_68314ca8d4a87a4c44adc978aef6523deae4296cc1a325a3"
         case (.localhost, .live):     return "zs_pk_live_a7c77a4e93d342b5f480991444f77e4407a40eaa1041b34d"
-        case (.localhost, .sandbox):  return "zs_pk_test_b222d1df61e2a564426f5814910841817e317dbbaa277335"
+        case (.localhost, .sandbox):  return "zs_pk_test_de3c620f3a14b17e9f2a49eb8f05d13a65e34f9003370beb"
         }
     }
 

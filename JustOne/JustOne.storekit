@@ -1,160 +1,151 @@
 {
-  "appPolicies" : {
-    "eula" : "",
-    "policies" : [
+  "appPolicies": {
+    "eula": "",
+    "policies": [
       {
-        "locale" : "en_US",
-        "policyText" : "",
-        "policyURL" : ""
+        "locale": "en_US",
+        "policyText": "",
+        "policyURL": ""
       }
     ]
   },
-  "identifier" : "75A3E32B",
-  "nonRenewingSubscriptions" : [
-
-  ],
-  "products" : [
-
-  ],
-  "settings" : {
-    "_applicationInternalID" : "6758965008",
-    "_askToBuyEnabled" : false,
-    "_billingGracePeriodEnabled" : false,
-    "_billingIssuesEnabled" : false,
-    "_developerTeamID" : "YUM5K9J52M",
-    "_disableDialogs" : false,
-    "_failTransactionsEnabled" : false,
-    "_lastSynchronizedDate" : 794814057.31629097,
-    "_locale" : "en_US",
-    "_renewalBillingIssuesEnabled" : false,
-    "_storefront" : "USA",
-    "_storeKitErrors" : [
-
-    ],
-    "_timeRate" : 0
-  },
-  "subscriptionGroups" : [
+  "identifier": "75A3E32B",
+  "nonRenewingSubscriptions": [],
+  "products": [
     {
-      "id" : "21926387",
-      "localizations" : [
-
-      ],
-      "name" : "Premium",
-      "subscriptions" : [
+      "displayPrice": "1.99",
+      "familyShareable": false,
+      "internalID": "6800000001",
+      "localizations": [
         {
-          "adHocOffers" : [
-
-          ],
-          "codeOffers" : [
-
-          ],
-          "displayPrice" : "6.99",
-          "familyShareable" : false,
-          "groupNumber" : 1,
-          "internalID" : "6758966845",
-          "introductoryOffer" : null,
-          "localizations" : [
+          "description": "One streak saver token.",
+          "displayName": "1 Streak Saver",
+          "locale": "en_US"
+        }
+      ],
+      "productID": "io.zerosettle.JustOne.streakSaver1",
+      "referenceName": "1 Streak Saver",
+      "type": "Consumable"
+    },
+    {
+      "displayPrice": "3.99",
+      "familyShareable": false,
+      "internalID": "6800000002",
+      "localizations": [
+        {
+          "description": "Five streak saver tokens.",
+          "displayName": "5 Streak Savers",
+          "locale": "en_US"
+        }
+      ],
+      "productID": "io.zerosettle.JustOne.streakSavers5",
+      "referenceName": "5 Streak Savers",
+      "type": "Consumable"
+    }
+  ],
+  "settings": {
+    "_applicationInternalID": "6758965008",
+    "_askToBuyEnabled": false,
+    "_billingGracePeriodEnabled": false,
+    "_billingIssuesEnabled": false,
+    "_developerTeamID": "YUM5K9J52M",
+    "_disableDialogs": false,
+    "_failTransactionsEnabled": false,
+    "_lastSynchronizedDate": 794814057.316291,
+    "_locale": "en_US",
+    "_renewalBillingIssuesEnabled": false,
+    "_storefront": "USA",
+    "_storeKitErrors": [],
+    "_timeRate": 0
+  },
+  "subscriptionGroups": [
+    {
+      "id": "21926387",
+      "localizations": [],
+      "name": "Premium",
+      "subscriptions": [
+        {
+          "adHocOffers": [],
+          "codeOffers": [],
+          "displayPrice": "6.99",
+          "familyShareable": false,
+          "groupNumber": 1,
+          "internalID": "6758966845",
+          "introductoryOffer": null,
+          "localizations": [
             {
-              "description" : "Full premium on a monthly basis",
-              "displayName" : "Just One Premium (Monthly)",
-              "locale" : "en_US"
+              "description": "Full premium on a monthly basis",
+              "displayName": "Just One Premium (Monthly)",
+              "locale": "en_US"
             }
           ],
-          "productID" : "io.zerosettle.justone.premiumMonthly",
-          "recurringSubscriptionPeriod" : "P1M",
-          "referenceName" : "Just One Premium (Monthly)",
-          "subscriptionGroupID" : "21926387",
-          "type" : "RecurringSubscription",
-          "winbackOffers" : [
-
-          ]
+          "productID": "io.zerosettle.justone.premiumMonthly",
+          "recurringSubscriptionPeriod": "P1M",
+          "referenceName": "Just One Premium (Monthly)",
+          "subscriptionGroupID": "21926387",
+          "type": "RecurringSubscription",
+          "winbackOffers": []
         },
         {
-          "adHocOffers" : [
-
-          ],
-          "codeOffers" : [
-
-          ],
-          "displayPrice" : "1.99",
-          "familyShareable" : false,
-          "groupNumber" : 2,
-          "internalID" : "6759628915",
-          "introductoryOffer" : null,
-          "localizations" : [
-
-          ],
-          "productID" : "io.zerosettle.JustOne.premiumWeekly",
-          "recurringSubscriptionPeriod" : "P1W",
-          "referenceName" : "Just One Premium (Weekly)",
-          "subscriptionGroupID" : "21926387",
-          "type" : "RecurringSubscription",
-          "winbackOffers" : [
-
-          ]
+          "adHocOffers": [],
+          "codeOffers": [],
+          "displayPrice": "1.99",
+          "familyShareable": false,
+          "groupNumber": 2,
+          "internalID": "6759628915",
+          "introductoryOffer": null,
+          "localizations": [],
+          "productID": "io.zerosettle.JustOne.premiumWeekly",
+          "recurringSubscriptionPeriod": "P1W",
+          "referenceName": "Just One Premium (Weekly)",
+          "subscriptionGroupID": "21926387",
+          "type": "RecurringSubscription",
+          "winbackOffers": []
         },
         {
-          "adHocOffers" : [
-
-          ],
-          "codeOffers" : [
-
-          ],
-          "displayPrice" : "39.99",
-          "familyShareable" : false,
-          "groupNumber" : 3,
-          "internalID" : "6759628830",
-          "introductoryOffer" : null,
-          "localizations" : [
-
-          ],
-          "productID" : "io.zerosettle.JustOne.premiumYearly",
-          "recurringSubscriptionPeriod" : "P1Y",
-          "referenceName" : "Just One Premium (Yearly)",
-          "subscriptionGroupID" : "21926387",
-          "type" : "RecurringSubscription",
-          "winbackOffers" : [
-
-          ]
+          "adHocOffers": [],
+          "codeOffers": [],
+          "displayPrice": "39.99",
+          "familyShareable": false,
+          "groupNumber": 3,
+          "internalID": "6759628830",
+          "introductoryOffer": null,
+          "localizations": [],
+          "productID": "io.zerosettle.JustOne.premiumYearly",
+          "recurringSubscriptionPeriod": "P1Y",
+          "referenceName": "Just One Premium (Yearly)",
+          "subscriptionGroupID": "21926387",
+          "type": "RecurringSubscription",
+          "winbackOffers": []
         }
       ]
     },
     {
-      "id" : "21969294",
-      "localizations" : [
-
-      ],
-      "name" : "Unlimited Streak Savers",
-      "subscriptions" : [
+      "id": "21969294",
+      "localizations": [],
+      "name": "Unlimited Streak Savers",
+      "subscriptions": [
         {
-          "adHocOffers" : [
-
-          ],
-          "codeOffers" : [
-
-          ],
-          "displayPrice" : "9.99",
-          "familyShareable" : false,
-          "groupNumber" : 1,
-          "internalID" : "6760314642",
-          "introductoryOffer" : null,
-          "localizations" : [
-
-          ],
-          "productID" : "io.zerosettle.justone.unlimitedStreakSavers",
-          "recurringSubscriptionPeriod" : "P1M",
-          "referenceName" : "Unlimited Streak Savers",
-          "subscriptionGroupID" : "21969294",
-          "type" : "RecurringSubscription",
-          "winbackOffers" : [
-
-          ]
+          "adHocOffers": [],
+          "codeOffers": [],
+          "displayPrice": "9.99",
+          "familyShareable": false,
+          "groupNumber": 1,
+          "internalID": "6760314642",
+          "introductoryOffer": null,
+          "localizations": [],
+          "productID": "io.zerosettle.justone.unlimitedStreakSavers",
+          "recurringSubscriptionPeriod": "P1M",
+          "referenceName": "Unlimited Streak Savers",
+          "subscriptionGroupID": "21969294",
+          "type": "RecurringSubscription",
+          "winbackOffers": []
         }
       ]
     }
   ],
-  "version" : {
-    "major" : 4,
-    "minor" : 0
+  "version": {
+    "major": 4,
+    "minor": 0
   }
 }

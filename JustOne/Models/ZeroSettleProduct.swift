@@ -105,6 +105,54 @@ enum SubscriptionTier: String, CaseIterable, Identifiable {
     var freeTrialDays: Int {
         zsProduct?.freeTrialDays ?? 0
     }
+
+    // MARK: - Trial Mode Copy
+
+    /// The SDK trial-mode facts, if any.
+    var trial: ZSTrialFacts? { zsProduct?.trial }
+
+    /// Currency code for web price, falling back to app store price, then USD.
+    private var currencyCode: String {
+        zsProduct?.webPrice?.currencyCode
+            ?? zsProduct?.appStorePrice?.currencyCode
+            ?? "USD"
+    }
+
+    /// Web price formatted with billing interval, e.g. "$4.99/mo".
+    private var webPriceFormatted: String? {
+        guard let web = zsProduct?.webPrice else { return nil }
+        let amount = web.formatted
+        switch zsProduct?.billingPeriod {
+        case .week:  return "\(amount)/wk"
+        case .month: return "\(amount)/mo"
+        case .year:  return "\(amount)/yr"
+        case .none:  return amount
+        }
+    }
+
+    /// Mode-aware paywall headline. Falls back to the plain free-trial label
+    /// for free mode / no trial facts (older backends, non-experiment products).
+    var trialOfferLabel: String? {
+        guard let trial = zsProduct?.trial else { return freeTrialLabel }
+        switch trial.mode {
+        case .free:
+            return freeTrialLabel
+        case .paid:
+            let upfront = Self.formatCents(trial.upfrontAmountCents, currency: currencyCode)
+            if let recurring = webPriceFormatted {
+                return "Start for \(upfront), then \(recurring)"
+            }
+            return "Start for \(upfront)"
+        case .authHold:
+            let hold = Self.formatCents(trial.holdAmountCents, currency: currencyCode)
+            let base = freeTrialLabel ?? "Free trial"
+            return "\(base) — a temporary \(hold) hold confirms your card, released if you cancel"
+        }
+    }
+
+    private static func formatCents(_ cents: Int, currency: String) -> String {
+        (Decimal(cents) / 100).formatted(.currency(code: currency))
+    }
 }
 
 // MARK: - Consumable Products

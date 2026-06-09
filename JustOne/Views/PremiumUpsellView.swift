@@ -164,9 +164,9 @@ struct PremiumUpsellView: View {
 
     // MARK: - Tier Cards
 
-    /// Whether any of the visible tiers has a trial offer label (used to reserve consistent card height).
+    /// Whether any of the visible tiers has a trial badge (used to reserve consistent card height).
     private var anyTierHasTrial: Bool {
-        upgradeTiers.contains { $0.trialOfferLabel != nil }
+        upgradeTiers.contains { $0.trialBadgeLabel != nil }
     }
 
     private var tierCards: some View {
@@ -193,10 +193,10 @@ struct PremiumUpsellView: View {
                     .foregroundStyle(.secondary)
 
                 // Always reserve space for the trial line when any tier has a trial
-                Text(tier.trialOfferLabel ?? " ")
+                Text(tier.trialBadgeLabel ?? " ")
                     .font(.system(size: 10, weight: .semibold))
                     .foregroundColor(.justSuccess)
-                    .opacity(tier.trialOfferLabel != nil ? 1 : 0)
+                    .opacity(tier.trialBadgeLabel != nil ? 1 : 0)
                     .frame(height: anyTierHasTrial ? nil : 0)
                     .clipped()
             }
@@ -238,7 +238,7 @@ struct PremiumUpsellView: View {
 
     @ViewBuilder
     private var freeTrialBanner: some View {
-        let label = selectedTier.trialOfferLabel
+        let label = selectedTier.trialBannerLabel
         HStack(spacing: 6) {
             Image(systemName: "gift.fill")
                 .font(.caption)

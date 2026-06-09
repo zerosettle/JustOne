@@ -130,13 +130,26 @@ enum SubscriptionTier: String, CaseIterable, Identifiable {
         }
     }
 
-    /// Mode-aware paywall headline. Falls back to the plain free-trial label
-    /// for free mode / no trial facts (older backends, non-experiment products).
-    var trialOfferLabel: String? {
+    /// Short trial descriptor for the small tier-card badge.
+    var trialBadgeLabel: String? {
         guard let trial = zsProduct?.trial else { return freeTrialLabel }
         switch trial.mode {
+        case .free, .authHold:
+            return freeTrialLabel               // the hold detail lives in the banner
+        case .paid:
+            let upfront = Self.formatCents(trial.upfrontAmountCents, currency: currencyCode)
+            return "\(upfront) to start"
+        }
+    }
+
+    /// Full call-to-action phrase for the trial banner.
+    var trialBannerLabel: String? {
+        guard let trial = zsProduct?.trial else {
+            return freeTrialLabel.map { "Start your \($0)" }
+        }
+        switch trial.mode {
         case .free:
-            return freeTrialLabel
+            return freeTrialLabel.map { "Start your \($0)" }
         case .paid:
             let upfront = Self.formatCents(trial.upfrontAmountCents, currency: currencyCode)
             if let recurring = webPriceFormatted {
